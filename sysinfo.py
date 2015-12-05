@@ -87,36 +87,22 @@ class Info(object):
         procs = [p for p in psutil.process_iter()]
         # First run - invalid values
         cpu = psutil.cpu_times_percent()
-        for p in procs:
-            try:
-                p.get_cpu_percent()
-            except (psutil.AccessDenied, psutil.NoSuchProcess):
-                pass
         # Wait
         time.sleep(0.5)
         # Next run - gives values since first run
         cpu = psutil.cpu_times_percent()
-        for p in procs:
-            try:
-                p._cpu_percent = p.get_cpu_percent()
-            except (psutil.AccessDenied, psutil.NoSuchProcess):
-                p._cpu_percent = 0.0
-
         data = {
             "user": cpu.user,
             "system": cpu.system
         }
-        # Top processes
-        top_procs = sorted(procs, key=lambda p: p._cpu_percent, reverse=True)[:5]
-        data["top"] = [
-            {
-                "pid": p.pid,
-                "cpu": p._cpu_percent,
-                "name": p.name()
-            }
-            for p in top_procs
-        ]
         return data
+
+    def top_info(self):
+        # Top processes
+        top_procs = [p.split() for p in
+                     Util.run("ps axro 'pid, %cpu, ucomm'")[1:6]]
+        return [ { "pid": p[0], "cpu": p[1], "name": p[2] }
+            for p in top_procs ]
 
     def memory_info(self):
         # Memory
@@ -150,17 +136,15 @@ class Info(object):
             m = re.match("([a-z0-9]+):", line)
             if m:
                 cur_if = m.group(1)
-                data[cur_if] = {}
-                continue
-            if "status: active" in line:
-                # Interface is active
-                data[cur_if]['active'] = True
+                data[cur_if] = []
                 continue
             line = line.strip()
             if line.startswith("inet"):
                 # IP Address info
                 parts = line.split()
-                data[cur_if].setdefault(parts[0],[]).append(parts[1])
+                if parts[1].startswith("fe80"):
+                    continue
+                data[cur_if].append(re.sub("%.*$", "", parts[1]))
         return data
 
     def wifi_info(self):
@@ -172,6 +156,8 @@ class Info(object):
             data[parts[0]] = parts[1].strip()
         if 'agrCtlRSSI' in data:
             data["SNR"] = int(data["agrCtlRSSI"]) - int(data["agrCtlNoise"])
+        if 'channel' in data:
+            data['channel'] = data['channel'].replace(',-1', '')
         return data
 
     def nameservers_info(self):
@@ -186,6 +172,60 @@ class Info(object):
         except IOError:
             pass
         return data
+
+    def bandwidth_info(self):
+        data = {}
+        lines = Util.run('netstat -inb')[1:]
+        for line in lines:
+            parts = line.split()
+            if parts[0] in data:
+                # netstat -ib duplicates lines for each interface (showing
+                # different IPs), so we only need one of each.
+                continue
+            if parts[0] == 'lo0':
+                # Skip localhost
+                continue
+            data[parts[0]] = (parts[6], parts[9])
+        return {"timestamp": time.time(), "bandwidth": data}
+
+    def ping_info(self):
+        hosts = ['8.8.8.8', 'www.verizon.com']
+
+        # Add default route to the list of hosts to ping
+        for line in Util.run("netstat -nr"):
+            parts = line.split()
+            if parts and parts[0] == 'default' and '.' in parts[1]:
+                hosts.insert(0, parts[1])
+                if parts[1] == '192.168.1.1':
+                    # Wifi point at home
+                    hosts.insert(1, '192.168.1.4')
+                break
+
+        results = Util.run_parallel({h: 'ping -n -c 1 -W 1 %s' % h for h in hosts})
+        data = []
+        for host in hosts:
+            try:
+                out = results[host][-1]
+            except IndexError:
+                out = ""
+            if out.startswith('round-trip'):
+                rtt = "%sms" % out.split('/')[4]
+                data.append({"host": host, "rtt": rtt})
+            else:
+                data.append({"host": host, "timeout": True})
+        return data
+
+    def vms_info(self):
+        # Virtualbox
+        vms = [i.split('"')[1] for i in Util.run(
+            "/usr/local/bin/VBoxManage list runningvms")]
+        for n, vm in enumerate(vms):
+            m = re.match("^(.+?)_([^_]+)_[0-9_]+$", vm)
+            if m:
+                # We have a vagrant machine
+                vms[n] = "%s (%s)" % (m.group(1), m.group(2))
+            vms[n] = "vbox - %s" % vms[n]
+        return vms
 
 i = Info()
 print json.dumps(i.data(), indent=2)
