@@ -1,4 +1,4 @@
-command: "/usr/local/bin/python ./sysinfo.py"
+command: "/usr/local/bin/python sysinfo.widget/sysinfo.py"
 
 humanize: (value) ->
     suffixes = "KMGT"
