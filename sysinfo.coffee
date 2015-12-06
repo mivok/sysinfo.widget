@@ -29,33 +29,57 @@ humanize: (value) ->
     else
         "#{value.toPrecision(3)}#{suffix}"
 
+## Rendering functions
+render_section: (icon, title, data) ->
+    "<h2><i class=\"fa fa-#{icon}\"></i> #{title}</h2> #{data}"
+
+render_cpu_mem_info: ->
+    """
+    <p>User: #{this.data['cpu']['user']}%, System: #{this.data['cpu']['system']}%</p>
+    <p>Free: #{this.data['memory']['free']}B, Wired: #{this.data['memory']['wired']}B,
+       Active: #{this.data['memory']['active']}B, Inactive:
+       #{this.data['memory']['inactive']}B</p>
+    """
+
 render_top_procs: ->
-    ( """<tr>
+    items = ( """<tr>
         <td class="pid">#{i['pid']}</td>
         <td class="cpu">#{i['cpu']}</td>
         <td class="name">#{i['name']}</td>
-    </tr>""" for i in this.data['top'] ).join('\n')
+    </tr>""" for i in this.data['top'] )
+    """<table class="top_procs">#{items.join(" ")}</table>"""
+
+render_disk_space_info: ->
+    """
+    <p>Used: #{this.data['disk']['human']['used']}B,
+    Free: #{this.data['disk']['human']['free']},
+    Total: #{this.data['disk']['human']['total']}B
+    (#{this.data['disk']['percent']}%)</p>
+    """
 
 render_wifi_info: ->
     if this.data['wifi']['AirPort'] == 'Off'
-        "<dt>Wifi</dt><dd>Off</dd>"
+        "<dl><dt>Wifi</dt><dd>Off</dd></dl>"
     else
         """
-        <dt>SSID</dt><dd>#{this.data['wifi']['SSID']}</dd>
-        <dt>BSSID</dt><dd>#{this.data['wifi']['BSSID']}</dd>
-        <dt>Speed</dt><dd>#{this.data['wifi']['lastTxRate']}Mbps /
-            #{this.data['wifi']['maxRate']}Mbps</dd>
-        <dt>SNR</dt><dd>#{this.data['wifi']['SNR']}dB</dd>
-        <dt>Channel</dt><dd>#{this.data['wifi']['channel']}</dd>
+        <dl>
+            <dt>SSID</dt><dd>#{this.data['wifi']['SSID']}</dd>
+            <dt>BSSID</dt><dd>#{this.data['wifi']['BSSID']}</dd>
+            <dt>Speed</dt><dd>#{this.data['wifi']['lastTxRate']}Mbps /
+                #{this.data['wifi']['maxRate']}Mbps</dd>
+            <dt>SNR</dt><dd>#{this.data['wifi']['SNR']}dB</dd>
+            <dt>Channel</dt><dd>#{this.data['wifi']['channel']}</dd>
+        </dl>
         """
 
-render_ip_info: ->
+render_network_info: ->
     ip_info = []
     for iface in Object.keys(this.data['ip']).sort()
         ips = this.data['ip'][iface]
         if ips.length > 0  and iface != 'lo0'
             ip_info.push("<dt>#{iface}</dt><dd>#{ips.join(", ")}</dd>")
-    ip_info.join(" ")
+    dns_info = "<dt>DNS</dt><dd>#{this.data['nameservers'].join(", ")}</dd>"
+    ip_info.join(" ") + dns_info
 
 render_bandwidth_info: ->
     window.sysinfo.bandwidth ||= {}
@@ -82,7 +106,7 @@ render_bandwidth_info: ->
                         <dd>IN #{bytes_in}Bps / OUT #{bytes_out}Bps</dd>
                         """)
     window.sysinfo['bandwidth'] = new_bw
-    bw.join("")
+    "<dl>#{bw.join("")}</dl>"
 
 render_ping_info: ->
     ping_info = []
@@ -91,52 +115,34 @@ render_ping_info: ->
             ping_info.push("<dt>#{p.host}</dt><dd class=\"error\">TIMEOUT</dd>")
         else
             ping_info.push("<dt>#{p.host}</dt><dd>#{p.rtt}</dd>")
-    ping_info = ping_info.join("")
+    "<dl class=\"wide\">#{ping_info.join("")}</dl>"
 
-render: (output) ->
-    window.sysinfo ||= {}
-    this.data = $.parseJSON(output)
-
+render_vm_info: ->
     """
-    <h1>#{this.data['hostname']}</h1>
-
-    <h2><i class="fa fa-laptop"></i> CPU / Memory</h2>
-    <p>User: #{this.data['cpu']['user']}%, System: #{this.data['cpu']['system']}%</p>
-    <p>Free: #{this.data['memory']['free']}B, Wired: #{this.data['memory']['wired']}B,
-       Active: #{this.data['memory']['active']}B, Inactive:
-       #{this.data['memory']['inactive']}B</p>
-
-    <h2><i class="fa fa-trophy"></i> Top processes</h2>
-    <table class="top_procs">
-        #{this.render_top_procs()}
-    </table>
-
-    <h2><i class="fa fa-hdd-o"></i> Disk space</h2>
-    <p>Used: #{this.data['disk']['human']['used']}B,
-    Free: #{this.data['disk']['human']['free']},
-    Total: #{this.data['disk']['human']['total']}B
-    (#{this.data['disk']['percent']}%)</p>
-
-    <h2><i class="fa fa-cloud"></i> Network</h2>
-    <dl>
-        #{this.render_ip_info()}
-        <dt>DNS</dt><dd>#{this.data['nameservers'].join(", ")}</dd>
-    </dl>
-
-    <h2><i class="fa fa-wifi"></i> Wifi</h2>
-    <dl>#{this.render_wifi_info()}</dl>
-
-    <h2><i class="fa fa-download"></i> Bandwidth</h2>
-    <dl>#{this.render_bandwidth_info()}</dl>
-
-    <h2><i class="fa fa-industry"></i> Ping</h2>
-    <dl class="wide">#{this.render_ping_info()}</dl>
-
-    <h2><i class="fa fa-server"></i> Running VMs</h2>
     <ul class="blank">
         #{("<li>#{i}</li>" for i in this.data['vms']).join("")}
     </ul>
     """
+
+render: (output) ->
+    window.sysinfo ||= {}
+    this.data = $.parseJSON(output)
+    sections = [
+        "<h1>#{this.data['hostname']}</h1>",
+        this.render_section("laptop", "CPU / Memory",
+            this.render_cpu_mem_info())
+        this.render_section("trophy", "Top Processes",
+            this.render_top_procs()),
+        this.render_section("hdd-o", "Disk space",
+            this.render_disk_space_info()),
+        this.render_section("cloud", "Network", this.render_network_info()),
+        this.render_section("wifi", "Wifi", this.render_wifi_info()),
+        this.render_section("download", "Bandwidth",
+            this.render_bandwidth_info()),
+        this.render_section("industry", "Ping", this.render_ping_info()),
+        this.render_section("server", "Running VMs", this.render_vm_info())
+    ]
+    sections.join(" ")
 
 style: """
     background: rgba(#000, 0.45)
