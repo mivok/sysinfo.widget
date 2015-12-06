@@ -133,11 +133,12 @@ render: (output) ->
 refreshFrequency: 5000
 
 style: """
-    background: rgba(#000, 0.35)
+    background: rgba(#000, 0.45)
     background-size: 176px 84px
-    color: #eee
+    color: #ddd
     font-family: Helvetica Neue
     font-size: 9pt
+    font-weight: 300
     line-height: 1.5
     width: 250px
     text-align: left
@@ -214,7 +215,7 @@ style: """
 
     ul.blank
         list-style: none
-        margin-left: 0
-        padding-left: 0
+        margin: 0
+        padding: 0
 
 """
