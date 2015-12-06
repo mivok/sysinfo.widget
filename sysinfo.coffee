@@ -7,8 +7,19 @@ command: "/usr/local/bin/python sysinfo.widget/sysinfo.py"
 # ping commands)
 refreshFrequency: 5000
 
-## Helper functions
+# Which modules to enable
+enabled_modules: [
+    "cpu_mem",
+    "top_procs",
+    "disk_space",
+    "network",
+    "wifi",
+    "bandwidth",
+    "ping",
+    "running_vms"
+]
 
+## Helper functions
 humanize: (value) ->
     # Convert a value to human readable numbers (e.g. 1024 -> 1k)
     suffixes = "kMGT"
@@ -29,11 +40,26 @@ humanize: (value) ->
     else
         "#{value.toPrecision(3)}#{suffix}"
 
+## Module definitions
+modules: {
+    "cpu_mem": {"icon": "laptop", "title": "CPU/Memory"},
+    "top_procs": {"icon": "trophy", "title": "Top Processes"}
+    "disk_space": {"icon": "hdd-o", "title": "Disk space"}
+    "network": {"icon": "cloud", "title": "Network"}
+    "wifi": {"icon": "wifi", "title": "Wifi"}
+    "bandwidth": {"icon": "download", "title": "Bandwidth"}
+    "ping": {"icon": "industry", "title": "Ping"}
+    "running_vms": {"icon": "server", "title": "Running VMs"}
+}
 ## Rendering functions
-render_section: (icon, title, data) ->
-    "<h2><i class=\"fa fa-#{icon}\"></i> #{title}</h2> #{data}"
+render_module: (module) ->
+    info = this.modules[module]
+    """
+    <h2><i class=\"fa fa-#{info['icon']}\"></i> #{info['title']}</h2>
+    #{this["render_#{module}"]()}
+    """
 
-render_cpu_mem_info: ->
+render_cpu_mem: ->
     """
     <p>User: #{this.data['cpu']['user']}%, System: #{this.data['cpu']['system']}%</p>
     <p>Free: #{this.data['memory']['free']}B, Wired: #{this.data['memory']['wired']}B,
@@ -49,7 +75,7 @@ render_top_procs: ->
     </tr>""" for i in this.data['top'] )
     """<table class="top_procs">#{items.join(" ")}</table>"""
 
-render_disk_space_info: ->
+render_disk_space: ->
     """
     <p>Used: #{this.data['disk']['human']['used']}B,
     Free: #{this.data['disk']['human']['free']},
@@ -57,7 +83,7 @@ render_disk_space_info: ->
     (#{this.data['disk']['percent']}%)</p>
     """
 
-render_wifi_info: ->
+render_wifi: ->
     if this.data['wifi']['AirPort'] == 'Off'
         "<dl><dt>Wifi</dt><dd>Off</dd></dl>"
     else
@@ -72,7 +98,7 @@ render_wifi_info: ->
         </dl>
         """
 
-render_network_info: ->
+render_network: ->
     ip_info = []
     for iface in Object.keys(this.data['ip']).sort()
         ips = this.data['ip'][iface]
@@ -81,7 +107,7 @@ render_network_info: ->
     dns_info = "<dt>DNS</dt><dd>#{this.data['nameservers'].join(", ")}</dd>"
     ip_info.join(" ") + dns_info
 
-render_bandwidth_info: ->
+render_bandwidth: ->
     window.sysinfo.bandwidth ||= {}
     old_bw = window.sysinfo.bandwidth
     new_bw = this.data['bandwidth']
@@ -108,7 +134,7 @@ render_bandwidth_info: ->
     window.sysinfo['bandwidth'] = new_bw
     "<dl>#{bw.join("")}</dl>"
 
-render_ping_info: ->
+render_ping: ->
     ping_info = []
     for p in this.data['ping']
         if p['timeout']
@@ -117,7 +143,7 @@ render_ping_info: ->
             ping_info.push("<dt>#{p.host}</dt><dd>#{p.rtt}</dd>")
     "<dl class=\"wide\">#{ping_info.join("")}</dl>"
 
-render_vm_info: ->
+render_running_vms: ->
     """
     <ul class="blank">
         #{("<li>#{i}</li>" for i in this.data['vms']).join("")}
@@ -127,22 +153,8 @@ render_vm_info: ->
 render: (output) ->
     window.sysinfo ||= {}
     this.data = $.parseJSON(output)
-    sections = [
-        "<h1>#{this.data['hostname']}</h1>",
-        this.render_section("laptop", "CPU / Memory",
-            this.render_cpu_mem_info())
-        this.render_section("trophy", "Top Processes",
-            this.render_top_procs()),
-        this.render_section("hdd-o", "Disk space",
-            this.render_disk_space_info()),
-        this.render_section("cloud", "Network", this.render_network_info()),
-        this.render_section("wifi", "Wifi", this.render_wifi_info()),
-        this.render_section("download", "Bandwidth",
-            this.render_bandwidth_info()),
-        this.render_section("industry", "Ping", this.render_ping_info()),
-        this.render_section("server", "Running VMs", this.render_vm_info())
-    ]
-    sections.join(" ")
+    "<h1>#{this.data['hostname']}</h1>" +
+        (this.render_module(m) for m in this.enabled_modules).join(" ")
 
 style: """
     background: rgba(#000, 0.45)
