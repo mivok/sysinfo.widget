@@ -1,9 +1,17 @@
 command: "/usr/local/bin/python sysinfo.widget/sysinfo.py"
 
+## Configuration
+
+# How often to refresh the widget - if this is too short, then the widget will
+# fail to refresh because the commands take too long to run (especially the
+# ping commands)
 refreshFrequency: 5000
 
+## Helper functions
+
 humanize: (value) ->
-    suffixes = "KMGT"
+    # Convert a value to human readable numbers (e.g. 1024 -> 1k)
+    suffixes = "kMGT"
     idx = -1
     while value >= 1024
         value = value / 1024.0
