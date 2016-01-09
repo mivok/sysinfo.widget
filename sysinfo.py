@@ -50,6 +50,7 @@ class Util(object):
                     output[name] = out
                     p.stdout.close()
                     del procs[name]
+            time.sleep(0.01)
 
         return output
 
