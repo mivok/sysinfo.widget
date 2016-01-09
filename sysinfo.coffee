@@ -77,14 +77,17 @@ render_top_procs: ->
     """<table id="top-procs"></table>"""
 
 update_top_procs: (data, domEl) ->
-    e = $(domEl).find("#top-procs")
-    e.empty()
-    for i in data['top']
-        e.append("""<tr>
-            <td class="pid">#{i['pid']}</td>
-            <td class="cpu">#{i['cpu']}</td>
-            <td class="name">#{i['name']}</td>
-        </tr>""")
+    @run("ps axro 'pid, %cpu, ucomm'", (err, output) ->
+        e = $(domEl).find("#top-procs")
+        e.empty()
+        top_procs = (p.match(/\S+/g) for p in output.split("\n"))[1..6]
+        for p in top_procs
+            e.append("""<tr>
+                <td class="pid">#{p[0]}</td>
+                <td class="cpu">#{p[1]}</td>
+                <td class="name">#{p[2]}</td>
+            </tr>""")
+    )
 
 render_disk_space: ->
     """
@@ -104,61 +107,109 @@ render_wifi: ->
 
 update_wifi: (data, domEl) ->
     e = $(domEl).find("#wifi")
-    if data['wifi']['AirPort'] == 'Off'
-        e.html("<dt>Wifi</dt><dd>Off</dd>")
-    else
-        e.html("""
-        <dl>
-            <dt>SSID</dt><dd>#{data['wifi']['SSID']}</dd>
-            <dt>BSSID</dt><dd>#{data['wifi']['BSSID']}</dd>
-            <dt>Speed</dt><dd>#{data['wifi']['lastTxRate']}Mbps /
-                #{data['wifi']['maxRate']}Mbps</dd>
-            <dt>SNR</dt><dd>#{data['wifi']['SNR']}dB</dd>
-            <dt>Channel</dt><dd>#{data['wifi']['channel']}</dd>
-        </dl>
-        """)
+    @run("/System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport -I", (err, output) ->
+        wifi_info = {}
+        for line in output.split("\n")
+            m = line.match(/^\s*(\S+): (.*)/)
+            if m
+                wifi_info[m[1]] = m[2]
+        if wifi_info['agrCtlRSSI']
+            wifi_info["SNR"] = parseInt(wifi_info["agrCtlRSSI"]) - parseInt(wifi_info["agrCtlNoise"])
+        if wifi_info['channel']
+            wifi_info['channel'] = wifi_info['channel'].replace(/,-?1/, '')
+        if wifi_info['AirPort'] == 'Off'
+            e.html("<dt>Wifi</dt><dd>Off</dd>")
+        else
+            e.html("""
+            <dl>
+                <dt>SSID</dt><dd>#{wifi_info['SSID']}</dd>
+                <dt>BSSID</dt><dd>#{wifi_info['BSSID']}</dd>
+                <dt>Speed</dt><dd>#{wifi_info['lastTxRate']}Mbps /
+                    #{wifi_info['maxRate']}Mbps</dd>
+                <dt>SNR</dt><dd>#{wifi_info['SNR']}dB</dd>
+                <dt>Channel</dt><dd>#{wifi_info['channel']}</dd>
+            </dl>
+            """)
+    )
 
 render_network: ->
-    """<dl id="network"></dl>"""
+    """<dl id="network"></dl><dl id="dns"></dl>"""
 
 update_network: (data, domEl) ->
     e = $(domEl).find("#network")
-    e.empty()
-    for iface in Object.keys(data['ip']).sort()
-        ips = data['ip'][iface]
-        if ips.length > 0  and iface != 'lo0'
-            e.append("<dt>#{iface}</dt><dd>#{ips.join(", ")}</dd>")
-    e.append("<dt>DNS</dt><dd>#{data['nameservers'].join(", ")}</dd>")
+    @run("ifconfig -a", (err, output) ->
+        ip_info = {}
+        cur_if = ""
+        for line in output.split("\n")
+            m = line.match(/^([a-z0-9]+):/)
+            if m
+                cur_if  = m[1]
+                ip_info[cur_if] = []
+                continue
+            m = line.match(/^\s+inet6? ([0-9a-f.:]+)/)
+            if m and not m[1].startsWith("fe80")
+                ip_info[cur_if].push(m[1])
+        e.empty()
+        for iface in Object.keys(ip_info).sort()
+            ips = ip_info[iface]
+            if ips.length > 0  and iface != 'lo0'
+                e.append("<dt>#{iface}</dt><dd>#{ips.join(", ")}</dd>")
+    )
+    f = $(domEl).find("#dns")
+    @run("cat /etc/resolv.conf", (err, output) ->
+        nameservers = []
+        for line in output.split("\n")
+            m = line.match(/^nameserver (\S+)/)
+            if m
+                nameservers.push(m[1])
+        f.html("<dt>DNS</dt><dd>#{nameservers.join(", ")}</dd>")
+    )
 
 render_bandwidth: ->
     """<dl id="bandwidth"></dl>"""
 
 update_bandwidth: (data, domEl) ->
     e = $(domEl).find("#bandwidth")
-    e.empty()
     window.sysinfo.bandwidth ||= {}
-    old_bw = window.sysinfo.bandwidth
-    new_bw = data['bandwidth']
-    if old_bw?
-        time_diff = new_bw['timestamp'] - old_bw['timestamp']
-        if time_diff < 10
-            # We don't care about showing bandwidth if more than 10 seconds
-            # have passed between iterations
-            for k in Object.keys(old_bw['bandwidth']).sort()
-                oldv = old_bw['bandwidth'][k]
-                newv = new_bw['bandwidth'][k] || [0,0]
-                bytes_in_raw  = (parseInt(newv[0], 10) - \
-                    parseInt(oldv[0], 10)) / time_diff
-                bytes_out_raw = (parseInt(newv[1], 10) - \
-                    parseInt(oldv[1], 10)) / time_diff
-                bytes_in = this.humanize(bytes_in_raw)
-                bytes_out = this.humanize(bytes_out_raw)
-                unless bytes_in_raw == 0 and bytes_out_raw == 0
-                    e.append("""
-                        <dt>#{k}</dt>
-                        <dd>IN #{bytes_in}Bps / OUT #{bytes_out}Bps</dd>
-                        """)
-    window.sysinfo['bandwidth'] = new_bw
+    humanize = this.humanize
+    @run("netstat -inb", (err, output) ->
+        new_bw = {"timestamp": Date.now(), "bandwidth": {}}
+        for line in output.split("\n")[1..]
+            parts = line.split(/\s+/)
+            if not parts[0]
+                continue
+            if new_bw["bandwidth"][parts[0]]
+                # netstat -ib duplicates lines for each interface (showing
+                # different IPs), so we only need one of each.
+                continue
+            if parts[0] == 'lo0'
+                # Skip localhost
+                continue
+            new_bw["bandwidth"][parts[0]] = [parts[6], parts[9]]
+
+        old_bw = window.sysinfo.bandwidth
+        if old_bw?
+            time_diff = (new_bw['timestamp'] - old_bw['timestamp']) / 1000
+            if time_diff < 10
+                # We don't care about showing bandwidth if more than 10 seconds
+                # have passed between iterations
+                e.empty()
+                for k in Object.keys(old_bw['bandwidth']).sort()
+                    oldv = old_bw['bandwidth'][k]
+                    newv = new_bw['bandwidth'][k] || [0,0]
+                    bytes_in_raw  = (parseInt(newv[0], 10) - \
+                        parseInt(oldv[0], 10)) / time_diff
+                    bytes_out_raw = (parseInt(newv[1], 10) - \
+                        parseInt(oldv[1], 10)) / time_diff
+                    bytes_in = humanize(bytes_in_raw)
+                    bytes_out = humanize(bytes_out_raw)
+                    unless bytes_in_raw == 0 and bytes_out_raw == 0
+                        e.append("""
+                            <dt>#{k}</dt>
+                            <dd>IN #{bytes_in}Bps / OUT #{bytes_out}Bps</dd>
+                            """)
+        window.sysinfo['bandwidth'] = new_bw
+    )
 
 render_ping: ->
     """<dl id="ping" class="wide"></dl>"""

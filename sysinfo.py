@@ -98,13 +98,6 @@ class Info(object):
         }
         return data
 
-    def top_info(self):
-        # Top processes
-        top_procs = [p.split() for p in
-                     Util.run("ps axro 'pid, %cpu, ucomm'")[1:6]]
-        return [ { "pid": p[0], "cpu": p[1], "name": p[2] }
-            for p in top_procs ]
-
     def memory_info(self):
         # Memory
         meminfo = psutil.phymem_usage()
@@ -130,64 +123,6 @@ class Info(object):
         for k, v in b.items():
             data["human"][k] = Util.humanize(v)
         return data
-
-    def ip_info(self):
-        data = {}
-        for line in Util.run("ifconfig -a"):
-            m = re.match("([a-z0-9]+):", line)
-            if m:
-                cur_if = m.group(1)
-                data[cur_if] = []
-                continue
-            line = line.strip()
-            if line.startswith("inet"):
-                # IP Address info
-                parts = line.split()
-                if parts[1].startswith("fe80"):
-                    continue
-                data[cur_if].append(re.sub("%.*$", "", parts[1]))
-        return data
-
-    def wifi_info(self):
-        data = {}
-        airportcmd = "/System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport"
-        for line in Util.run("%s -I" % airportcmd):
-            line = line.strip()
-            parts = line.split(':', 1)
-            data[parts[0]] = parts[1].strip()
-        if 'agrCtlRSSI' in data:
-            data["SNR"] = int(data["agrCtlRSSI"]) - int(data["agrCtlNoise"])
-        if 'channel' in data:
-            data['channel'] = data['channel'].replace(',-1', '')
-        return data
-
-    def nameservers_info(self):
-        data = []
-        try:
-            with open("/etc/resolv.conf") as fh:
-                for line in fh:
-                    line = line.strip()
-                    parts = line.split()
-                    if parts[0] == 'nameserver':
-                        data.append(parts[1])
-        except IOError:
-            pass
-        return data
-
-    def bandwidth_info(self):
-        data = {}
-        lines = Util.run('netstat -inb')[1:]
-        for line in lines:
-            parts = line.split()
-            if parts[0] in data:
-                # netstat -ib duplicates lines for each interface (showing
-                # different IPs), so we only need one of each.
-                continue
-            if parts[0] == 'lo0':
-                # Skip localhost
-                continue
-            data[parts[0]] = (parts[6], parts[9])
-        return {"timestamp": time.time(), "bandwidth": data}
 
     def ping_info(self):
         hosts = ['8.8.8.8', 'www.verizon.com']
