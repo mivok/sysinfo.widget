@@ -83,7 +83,7 @@ update_top_procs: (data, domEl) ->
     @run("ps axro 'pid, %cpu, ucomm'", (err, output) ->
         e = $(domEl).find("#top-procs")
         e.empty()
-        top_procs = (p.match(/\S+/g) for p in output.split("\n"))[1..6]
+        top_procs = (p.match(/\S+/g) for p in output.split("\n"))[1..5]
         for p in top_procs
             e.append("""<tr>
                 <td class="pid">#{p[0]}</td>
