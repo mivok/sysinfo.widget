@@ -19,6 +19,9 @@ enabled_modules: [
     "running_vms"
 ]
 
+# Hosts to ping with the ping module
+ping_hosts: ["8.8.8.8", "www.verizon.com"]
+
 ## Helper functions
 humanize: (value) ->
     # Convert a value to human readable numbers (e.g. 1024 -> 1k)
@@ -94,13 +97,19 @@ render_disk_space: ->
     <p>Used: <span id="disk-used"></span>B,
     Free: <span id="disk-free"></span>,
     Total: <span id="disk-total"></span>B
-    (<span id="disk-percent"></span>%)</p>
+    (<span id="disk-percent"></span>)</p>
     """
 
 update_disk_space: (data, domEl) ->
-    for i in ['used', 'free', 'total']
-        $(domEl).find("#disk-#{i}").text(data['disk']['human'][i])
-    $(domEl).find("#disk-percent").text(data['disk']['percent'])
+    e = $(domEl)
+    @run("df -k /", (err, output) =>
+        [..., lastline, _] = output.split("\n")
+        parts = lastline.split(/\s+/)
+        e.find("#disk-total").text(@humanize(parts[1] * 1024))
+        e.find("#disk-used").text(@humanize(parts[2] * 1024))
+        e.find("#disk-free").text(@humanize(parts[3] * 1024))
+        e.find("#disk-percent").text(parts[4])
+    )
 
 render_wifi: ->
     """<dl id="wifi"></dl>"""
@@ -216,21 +225,44 @@ render_ping: ->
 
 update_ping: (data, domEl) ->
     e = $(domEl).find("#ping")
-    e.empty()
-    for p in this.data['ping']
-        if p['timeout']
-            e.append("<dt>#{p.host}</dt><dd class=\"error\">TIMEOUT</dd>")
-        else
-            e.append("<dt>#{p.host}</dt><dd>#{p.rtt}</dd>")
+    for host in this.ping_hosts
+        munged = host.replace(/\./g, "_")
+        if e.find("#pingtitle-#{munged}").length == 0
+            e.append("""
+                <dt id="pingtitle-#{munged}">#{host}</dt>
+                <dd id="pingvalue-#{munged}"></dd>
+            """)
+        pingtitle = e.find("#pingtitle-#{munged}")
+        pingvalue = e.find("#pingvalue-#{munged}")
+        do (pingtitle, pingvalue, @run) ->
+            @run("ping -n -c 1 -W 1 #{host} || true", (err, output) ->
+                if output
+                    [..., lastline, _] = output.split("\n")
+                else
+                    lastline = ""
+                if lastline.startsWith('round-trip')
+                    pingvalue.text("#{lastline.split("/")[4]}ms").removeClass("error")
+                else
+                    pingvalue.text("TIMEOUT").addClass("error")
+            )
 
 render_running_vms: ->
     """<ul id="runningvms" class="blank"></ul>"""
 
 update_running_vms: (data, domEl) ->
     e = $(domEl).find("#runningvms")
-    e.empty()
-    for i in data['vms']
-        e.append("<li>#{i}</li>")
+    @run("/usr/local/bin/VBoxManage list runningvms", (err, output) ->
+        e.empty()
+        for line in output.split("\n")
+            m = line.match(/"(.*)"/)
+            if m
+                vmname = m[1]
+                # Prettify vagrant machine names
+                m = vmname.match(/^(.+?)_([^_]+)_[0-9_]+$/)
+                if m
+                    vmname = "#{m[1]} (#{m[2]})"
+                e.append("<li>vbox - #{vmname}</li>")
+    )
 
 render: (output) ->
     window.sysinfo ||= {}

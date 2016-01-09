@@ -112,56 +112,5 @@ class Info(object):
     def hostname_info(self):
         return socket.gethostname()
 
-    def disk_info(self):
-        stats = os.statvfs("/")
-        data = {"bytes": {}, "human": {}}
-        b = data["bytes"]
-        b["free"] = stats.f_bavail * stats.f_frsize
-        b["total"] = stats.f_blocks * stats.f_frsize
-        b["used"] = b["total"] - b["free"]
-        data["percent"] = (100 * b["used"] / b["total"])
-        for k, v in b.items():
-            data["human"][k] = Util.humanize(v)
-        return data
-
-    def ping_info(self):
-        hosts = ['8.8.8.8', 'www.verizon.com']
-
-        # Add default route to the list of hosts to ping
-        for line in Util.run("netstat -nr"):
-            parts = line.split()
-            if parts and parts[0] == 'default' and '.' in parts[1]:
-                hosts.insert(0, parts[1])
-                if parts[1] == '192.168.1.1':
-                    # Wifi point at home
-                    hosts.insert(1, '192.168.1.4')
-                break
-
-        results = Util.run_parallel({h: 'ping -n -c 1 -W 1 %s' % h for h in hosts})
-        data = []
-        for host in hosts:
-            try:
-                out = results[host][-1]
-            except IndexError:
-                out = ""
-            if out.startswith('round-trip'):
-                rtt = "%sms" % out.split('/')[4]
-                data.append({"host": host, "rtt": rtt})
-            else:
-                data.append({"host": host, "timeout": True})
-        return data
-
-    def vms_info(self):
-        # Virtualbox
-        vms = [i.split('"')[1] for i in Util.run(
-            "/usr/local/bin/VBoxManage list runningvms")]
-        for n, vm in enumerate(vms):
-            m = re.match("^(.+?)_([^_]+)_[0-9_]+$", vm)
-            if m:
-                # We have a vagrant machine
-                vms[n] = "%s (%s)" % (m.group(1), m.group(2))
-            vms[n] = "vbox - %s" % vms[n]
-        return vms
-
 i = Info()
 print json.dumps(i.data(), indent=2)
