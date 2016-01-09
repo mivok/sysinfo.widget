@@ -34,9 +34,9 @@ humanize: (value) ->
 
     # toPrecision does significant figures, but values >1000 turn into
     # scientific notation, and we don't need to worry about precision there,
-    # so just print the value as is.
+    # so just print the value as is with no decimals.
     if value >= 1000
-        "#{value}#{suffix}"
+        "#{value.toFixed(0)}#{suffix}"
     else
         "#{value.toPrecision(3)}#{suffix}"
 
@@ -153,12 +153,13 @@ render_running_vms: ->
 render: (output) ->
     window.sysinfo ||= {}
     this.data = $.parseJSON(output)
-    "<h1>#{this.data['hostname']}</h1>" +
-        (this.render_module(m) for m in this.enabled_modules).join(" ")
+    """
+    <div class="background"></div>
+    <h1>#{this.data['hostname']}</h1>
+    #{(this.render_module(m) for m in this.enabled_modules).join(" ")}
+    """
 
 style: """
-    background: rgba(#000, 0.45)
-    background-size: 176px 84px
     color: #ddd
     font-family: Helvetica Neue
     font-size: 9pt
@@ -171,6 +172,20 @@ style: """
     right: 0
     top: 0
     height: 100%
+
+    .background
+        background: rgba(#000, 0.50)
+        // The transform prevents an issue where blur doesn't
+        // work as soon as you go offscreen
+        width: 100%
+        height: 100%
+        -webkit-transform: scale(1.3)
+        -webkit-transform-origin: top left
+        -webkit-filter: blur(15px)
+        position: absolute
+        top: -25px
+        left: -25px
+        z-index: -1
 
     pre
         font-family: Helvetica Neue
@@ -241,5 +256,6 @@ style: """
         list-style: none
         margin: 0
         padding: 0
+
 
 """
