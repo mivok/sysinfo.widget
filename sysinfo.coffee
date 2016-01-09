@@ -56,7 +56,7 @@ modules: {
 }
 ## Rendering functions
 render_module: (module) ->
-    info = this.modules[module]
+    info = @modules[module]
     """
     <h2><i class=\"fa fa-#{info['icon']}\"></i> #{info['title']}</h2>
     #{this["render_#{module}"]()}
@@ -224,7 +224,7 @@ render_ping: ->
 
 update_ping: (data, domEl) ->
     e = $(domEl).find("#ping")
-    for host in this.ping_hosts
+    for host in @ping_hosts
         munged = host.replace(/\./g, "_")
         if e.find("#pingtitle-#{munged}").length == 0
             e.append("""
@@ -265,16 +265,16 @@ update_running_vms: (data, domEl) ->
 
 render: (output) ->
     window.sysinfo ||= {}
-    this.data = $.parseJSON(output)
+    @data = $.parseJSON(output)
     """
     <div class="background"></div>
-    <h1>#{this.data['hostname']}</h1>
-    #{(this.render_module(m) for m in this.enabled_modules).join(" ")}
+    <h1>#{@data['hostname']}</h1>
+    #{(@render_module(m) for m in @enabled_modules).join(" ")}
     """
 
 update: (output, domEl) ->
     data = $.parseJSON(output)
-    for module in this.enabled_modules
+    for module in @enabled_modules
         this["update_#{module}"](data, domEl)
 
 style: """
