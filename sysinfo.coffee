@@ -180,8 +180,7 @@ render_bandwidth: ->
 update_bandwidth: (data, domEl) ->
     e = $(domEl).find("#bandwidth")
     window.sysinfo.bandwidth ||= {}
-    humanize = this.humanize
-    @run("netstat -inb", (err, output) ->
+    @run("netstat -inb", (err, output) =>
         new_bw = {"timestamp": Date.now(), "bandwidth": {}}
         for line in output.split("\n")[1..]
             parts = line.split(/\s+/)
@@ -210,8 +209,8 @@ update_bandwidth: (data, domEl) ->
                         parseInt(oldv[0], 10)) / time_diff
                     bytes_out_raw = (parseInt(newv[1], 10) - \
                         parseInt(oldv[1], 10)) / time_diff
-                    bytes_in = humanize(bytes_in_raw)
-                    bytes_out = humanize(bytes_out_raw)
+                    bytes_in = @humanize(bytes_in_raw)
+                    bytes_out = @humanize(bytes_out_raw)
                     unless bytes_in_raw == 0 and bytes_out_raw == 0
                         e.append("""
                             <dt>#{k}</dt>
