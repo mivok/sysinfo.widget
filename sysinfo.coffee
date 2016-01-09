@@ -61,57 +61,84 @@ render_module: (module) ->
 
 render_cpu_mem: ->
     """
-    <p>User: #{this.data['cpu']['user']}%, System: #{this.data['cpu']['system']}%</p>
-    <p>Free: #{this.data['memory']['free']}B, Wired: #{this.data['memory']['wired']}B,
-       Active: #{this.data['memory']['active']}B, Inactive:
-       #{this.data['memory']['inactive']}B</p>
+    <p>User: <span id="cpu-user"></span>%, System: <span id="cpu-system"></span>%</p>
+    <p>Free: <span id="memory-free"></span>B, Wired: <span id="memory-wired"></span>B,
+       Active: <span id="memory-active"></span>B, Inactive:
+       <span id="memory-inactive"></span>B</p>
     """
 
+update_cpu_mem: (data, domEl) ->
+    for i in ['user', 'system']
+        $(domEl).find("#cpu-#{i}").text(data['cpu'][i])
+    for i in ['free', 'wired', 'active', 'inactive']
+        $(domEl).find("#memory-#{i}").text(data['memory'][i])
+
 render_top_procs: ->
-    items = ( """<tr>
-        <td class="pid">#{i['pid']}</td>
-        <td class="cpu">#{i['cpu']}</td>
-        <td class="name">#{i['name']}</td>
-    </tr>""" for i in this.data['top'] )
-    """<table class="top_procs">#{items.join(" ")}</table>"""
+    """<table id="top-procs"></table>"""
+
+update_top_procs: (data, domEl) ->
+    e = $(domEl).find("#top-procs")
+    e.empty()
+    for i in data['top']
+        e.append("""<tr>
+            <td class="pid">#{i['pid']}</td>
+            <td class="cpu">#{i['cpu']}</td>
+            <td class="name">#{i['name']}</td>
+        </tr>""")
 
 render_disk_space: ->
     """
-    <p>Used: #{this.data['disk']['human']['used']}B,
-    Free: #{this.data['disk']['human']['free']},
-    Total: #{this.data['disk']['human']['total']}B
-    (#{this.data['disk']['percent']}%)</p>
+    <p>Used: <span id="disk-used"></span>B,
+    Free: <span id="disk-free"></span>,
+    Total: <span id="disk-total"></span>B
+    (<span id="disk-percent"></span>%)</p>
     """
 
+update_disk_space: (data, domEl) ->
+    for i in ['used', 'free', 'total']
+        $(domEl).find("#disk-#{i}").text(data['disk']['human'][i])
+    $(domEl).find("#disk-percent").text(data['disk']['percent'])
+
 render_wifi: ->
-    if this.data['wifi']['AirPort'] == 'Off'
-        "<dl><dt>Wifi</dt><dd>Off</dd></dl>"
+    """<dl id="wifi"></dl>"""
+
+update_wifi: (data, domEl) ->
+    e = $(domEl).find("#wifi")
+    if data['wifi']['AirPort'] == 'Off'
+        e.html("<dt>Wifi</dt><dd>Off</dd>")
     else
-        """
+        e.html("""
         <dl>
-            <dt>SSID</dt><dd>#{this.data['wifi']['SSID']}</dd>
-            <dt>BSSID</dt><dd>#{this.data['wifi']['BSSID']}</dd>
-            <dt>Speed</dt><dd>#{this.data['wifi']['lastTxRate']}Mbps /
-                #{this.data['wifi']['maxRate']}Mbps</dd>
-            <dt>SNR</dt><dd>#{this.data['wifi']['SNR']}dB</dd>
-            <dt>Channel</dt><dd>#{this.data['wifi']['channel']}</dd>
+            <dt>SSID</dt><dd>#{data['wifi']['SSID']}</dd>
+            <dt>BSSID</dt><dd>#{data['wifi']['BSSID']}</dd>
+            <dt>Speed</dt><dd>#{data['wifi']['lastTxRate']}Mbps /
+                #{data['wifi']['maxRate']}Mbps</dd>
+            <dt>SNR</dt><dd>#{data['wifi']['SNR']}dB</dd>
+            <dt>Channel</dt><dd>#{data['wifi']['channel']}</dd>
         </dl>
-        """
+        """)
 
 render_network: ->
-    ip_info = []
-    for iface in Object.keys(this.data['ip']).sort()
-        ips = this.data['ip'][iface]
+    """<dl id="network"></dl>"""
+
+update_network: (data, domEl) ->
+    e = $(domEl).find("#network")
+    e.empty()
+    for iface in Object.keys(data['ip']).sort()
+        ips = data['ip'][iface]
         if ips.length > 0  and iface != 'lo0'
-            ip_info.push("<dt>#{iface}</dt><dd>#{ips.join(", ")}</dd>")
-    dns_info = "<dt>DNS</dt><dd>#{this.data['nameservers'].join(", ")}</dd>"
-    ip_info.join(" ") + dns_info
+            e.append("<dt>#{iface}</dt><dd>#{ips.join(", ")}</dd>")
+    e.append("<dt>DNS</dt><dd>#{data['nameservers'].join(", ")}</dd>")
 
 render_bandwidth: ->
+    """<dl id="bandwidth"></dl>"""
+
+update_bandwidth: (data, domEl) ->
+    e = $(domEl).find("#bandwidth")
+    e.empty()
     window.sysinfo.bandwidth ||= {}
     old_bw = window.sysinfo.bandwidth
-    new_bw = this.data['bandwidth']
-    bw = []
+    new_bw = data['bandwidth']
     if old_bw?
         time_diff = new_bw['timestamp'] - old_bw['timestamp']
         if time_diff < 10
@@ -127,28 +154,32 @@ render_bandwidth: ->
                 bytes_in = this.humanize(bytes_in_raw)
                 bytes_out = this.humanize(bytes_out_raw)
                 unless bytes_in_raw == 0 and bytes_out_raw == 0
-                    bw.push("""
+                    e.append("""
                         <dt>#{k}</dt>
                         <dd>IN #{bytes_in}Bps / OUT #{bytes_out}Bps</dd>
                         """)
     window.sysinfo['bandwidth'] = new_bw
-    "<dl>#{bw.join("")}</dl>"
 
 render_ping: ->
-    ping_info = []
+    """<dl id="ping" class="wide"></dl>"""
+
+update_ping: (data, domEl) ->
+    e = $(domEl).find("#ping")
+    e.empty()
     for p in this.data['ping']
         if p['timeout']
-            ping_info.push("<dt>#{p.host}</dt><dd class=\"error\">TIMEOUT</dd>")
+            e.append("<dt>#{p.host}</dt><dd class=\"error\">TIMEOUT</dd>")
         else
-            ping_info.push("<dt>#{p.host}</dt><dd>#{p.rtt}</dd>")
-    "<dl class=\"wide\">#{ping_info.join("")}</dl>"
+            e.append("<dt>#{p.host}</dt><dd>#{p.rtt}</dd>")
 
 render_running_vms: ->
-    """
-    <ul class="blank">
-        #{("<li>#{i}</li>" for i in this.data['vms']).join("")}
-    </ul>
-    """
+    """<ul id="runningvms" class="blank"></ul>"""
+
+update_running_vms: (data, domEl) ->
+    e = $(domEl).find("#runningvms")
+    e.empty()
+    for i in data['vms']
+        e.append("<li>#{i}</li>")
 
 render: (output) ->
     window.sysinfo ||= {}
@@ -158,6 +189,11 @@ render: (output) ->
     <h1>#{this.data['hostname']}</h1>
     #{(this.render_module(m) for m in this.enabled_modules).join(" ")}
     """
+
+update: (output, domEl) ->
+    data = $.parseJSON(output)
+    for module in this.enabled_modules
+        this["update_#{module}"](data, domEl)
 
 style: """
     color: #ddd
@@ -208,23 +244,23 @@ style: """
     p
         margin: 0
 
-    table.top_procs
+    table#top-procs
         border-spacing: 0
         width: 100%
 
-    table.top_procs td
+    table#top-procs td
         padding-top: 0
         padding-bottom: 0
 
-    table.top_procs td.pid
+    table#top-procs td.pid
         width: 5ex
         text-align: right
 
-    table.top_procs td.cpu
+    table#top-procs td.cpu
         text-align: right
         width: 7ex
 
-    table.top_procs td.name
+    table#top-procs td.name
         padding-left: 0.5em
 
     dl
