@@ -263,12 +263,10 @@ update_running_vms: (data, domEl) ->
                 e.append("<li>vbox - #{vmname}</li>")
     )
 
-render: (output) ->
+render: (_) ->
     window.sysinfo ||= {}
-    @data = $.parseJSON(output)
     """
     <div class="background"></div>
-    <h1>#{@data['hostname']}</h1>
     #{(@render_module(m) for m in @enabled_modules).join(" ")}
     """
 

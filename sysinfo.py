@@ -109,8 +109,5 @@ class Info(object):
 
         }
 
-    def hostname_info(self):
-        return socket.gethostname()
-
 i = Info()
 print json.dumps(i.data(), indent=2)
