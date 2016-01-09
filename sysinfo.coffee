@@ -1,4 +1,4 @@
-command: "/usr/local/bin/python sysinfo.widget/sysinfo.py"
+command: ""
 
 ## Configuration
 
@@ -64,22 +64,45 @@ render_module: (module) ->
 
 render_cpu_mem: ->
     """
-    <p>User: <span id="cpu-user"></span>%, System: <span id="cpu-system"></span>%</p>
+    <p>CPU: <span id="cpu"></span>%</p>
     <p>Free: <span id="memory-free"></span>B, Wired: <span id="memory-wired"></span>B,
        Active: <span id="memory-active"></span>B, Inactive:
        <span id="memory-inactive"></span>B</p>
     """
 
-update_cpu_mem: (data, domEl) ->
-    for i in ['user', 'system']
-        $(domEl).find("#cpu-#{i}").text(data['cpu'][i])
-    for i in ['free', 'wired', 'active', 'inactive']
-        $(domEl).find("#memory-#{i}").text(data['memory'][i])
+update_cpu_mem: (domEl) ->
+    e = $(domEl)
+    @run("ps -A -o %cpu", (err, output) ->
+        total_usage = 0.0
+        for line in output.split("\n")
+            usage = parseFloat(line)
+            if not isNaN(usage)
+                total_usage += usage
+        e.find("#cpu").text(total_usage.toPrecision(3))
+    )
+    @run("vm_stat", (err, output) =>
+        page_size = 0
+        stats = {}
+        for line in output.split("\n")
+            m = line.match(/page size of (\d+) bytes/)
+            if m
+                page_size = parseInt(m[1])
+                continue
+            m = line.match(/^(.*):\s+(\d+)\.$/)
+            if m
+                stats[m[1]] = parseInt(m[2])
+                if m[1].match(/[Pp]ages/)
+                    stats[m[1]] *= page_size
+        e.find("#memory-free").text(@humanize(stats["Pages free"]))
+        e.find("#memory-active").text(@humanize(stats["Pages active"]))
+        e.find("#memory-inactive").text(@humanize(stats["Pages inactive"]))
+        e.find("#memory-wired").text(@humanize(stats["Pages wired down"]))
+    )
 
 render_top_procs: ->
     """<table id="top-procs"></table>"""
 
-update_top_procs: (data, domEl) ->
+update_top_procs: (domEl) ->
     @run("ps axro 'pid, %cpu, ucomm'", (err, output) ->
         e = $(domEl).find("#top-procs")
         e.empty()
@@ -100,7 +123,7 @@ render_disk_space: ->
     (<span id="disk-percent"></span>)</p>
     """
 
-update_disk_space: (data, domEl) ->
+update_disk_space: (domEl) ->
     e = $(domEl)
     @run("df -k /", (err, output) =>
         [..., lastline, _] = output.split("\n")
@@ -114,7 +137,7 @@ update_disk_space: (data, domEl) ->
 render_wifi: ->
     """<dl id="wifi"></dl>"""
 
-update_wifi: (data, domEl) ->
+update_wifi: (domEl) ->
     e = $(domEl).find("#wifi")
     @run("/System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport -I", (err, output) ->
         wifi_info = {}
@@ -144,7 +167,7 @@ update_wifi: (data, domEl) ->
 render_network: ->
     """<dl id="network"></dl><dl id="dns"></dl>"""
 
-update_network: (data, domEl) ->
+update_network: (domEl) ->
     e = $(domEl).find("#network")
     @run("ifconfig -a", (err, output) ->
         ip_info = {}
@@ -177,7 +200,7 @@ update_network: (data, domEl) ->
 render_bandwidth: ->
     """<dl id="bandwidth"></dl>"""
 
-update_bandwidth: (data, domEl) ->
+update_bandwidth: (domEl) ->
     e = $(domEl).find("#bandwidth")
     window.sysinfo.bandwidth ||= {}
     @run("netstat -inb", (err, output) =>
@@ -222,7 +245,7 @@ update_bandwidth: (data, domEl) ->
 render_ping: ->
     """<dl id="ping" class="wide"></dl>"""
 
-update_ping: (data, domEl) ->
+update_ping: (domEl) ->
     e = $(domEl).find("#ping")
     for host in @ping_hosts
         munged = host.replace(/\./g, "_")
@@ -248,7 +271,7 @@ update_ping: (data, domEl) ->
 render_running_vms: ->
     """<ul id="runningvms" class="blank"></ul>"""
 
-update_running_vms: (data, domEl) ->
+update_running_vms: (domEl) ->
     e = $(domEl).find("#runningvms")
     @run("/usr/local/bin/VBoxManage list runningvms", (err, output) ->
         e.empty()
@@ -271,9 +294,8 @@ render: (_) ->
     """
 
 update: (output, domEl) ->
-    data = $.parseJSON(output)
     for module in @enabled_modules
-        this["update_#{module}"](data, domEl)
+        this["update_#{module}"](domEl)
 
 style: """
     color: #ddd
