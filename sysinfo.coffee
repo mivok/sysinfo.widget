@@ -26,6 +26,9 @@ ping_hosts: ["default_route", "8.8.8.8", "www.verizon.com"]
 home_router: "192.168.1.1"
 additional_home_hosts: ["192.168.1.4"]
 
+# Storage of state between refreshes
+state: {}
+
 ## Helper functions
 humanize: (value) ->
     # Convert a value to human readable numbers (e.g. 1024 -> 1k)
@@ -262,7 +265,7 @@ render_bandwidth: ->
 
 update_bandwidth: (domEl) ->
     e = $(domEl).find("#bandwidth")
-    window.sysinfo.bandwidth ||= {}
+    @state.bandwidth ||= {}
     @run("netstat -inb", (err, output) =>
         new_bw = {"timestamp": Date.now(), "bandwidth": {}}
         for line in output.split("\n")[1..]
@@ -278,7 +281,7 @@ update_bandwidth: (domEl) ->
                 continue
             new_bw["bandwidth"][parts[0]] = [parts[6], parts[9]]
 
-        old_bw = window.sysinfo.bandwidth
+        old_bw = @state.bandwidth
         if old_bw?
             time_diff = (new_bw['timestamp'] - old_bw['timestamp']) / 1000
             if time_diff < 10
@@ -299,7 +302,7 @@ update_bandwidth: (domEl) ->
                             <dt>#{k}</dt>
                             <dd>IN #{bytes_in}Bps / OUT #{bytes_out}Bps</dd>
                             """)
-        window.sysinfo['bandwidth'] = new_bw
+        @state['bandwidth'] = new_bw
     )
 
 render_ping: ->
@@ -364,7 +367,6 @@ update_running_vms: (domEl) ->
     )
 
 render: (_) ->
-    window.sysinfo ||= {}
     """
     <div class="background"></div>
     #{(@render_module(m) for m in @enabled_modules).join(" ")}
