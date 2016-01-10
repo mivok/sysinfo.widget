@@ -90,15 +90,18 @@ render_cpu_mem: ->
     """
     <p>CPU: <span id="cpu"></span>%</p>
     <div class="bar"><div id="cpu-bar"></div></div>
-    <p>
-        Free: <span id="mem-free"></span>B |
-        Wired: <span id="mem-wired"></span>B |
-        Active: <span id="mem-active"></span>B
-    </p>
-    <p>
-        Compressed: <span id="mem-compressed"></span>B |
-        Cached: <span id="mem-cached"></span>B
-    </p>
+    <table class="simple">
+        <tr>
+            <td>Ac: <span id="mem-active"></span>B</td>
+            <td>Wi: <span id="mem-wired"></span>B</td>
+            <td>Sp: <span id="mem-speculative"></span>B</td>
+        </tr>
+        <tr>
+            <td>Co: <span id="mem-compressed"></span>B</td>
+            <td>Ca: <span id="mem-cached"></span>B</td>
+            <td>Fr: <span id="mem-free"></span>B</td>
+        </tr>
+    </table>
     <div class="bar">
         <div id="mem-bar-cached" class="a"></div>
         <div id="mem-bar-compressed" class="b"></div>
@@ -146,6 +149,7 @@ update_cpu_mem: (domEl) ->
         e.find("#mem-free").text(@humanize(stats["Pages free"]))
         e.find("#mem-active").text(@humanize(stats["Pages active"]))
         e.find("#mem-wired").text(@humanize(stats["Pages wired down"]))
+        e.find("#mem-speculative").text(@humanize(stats["Pages speculative"]))
         e.find("#mem-cached").text(@humanize(stats["File-backed pages"]))
         e.find("#mem-compressed").text(@humanize(stats["Pages occupied by compressor"]))
         # This is close to all the memory on the system but I'm not sure if
@@ -187,10 +191,14 @@ update_top_procs: (domEl) ->
 
 render_disk_space: ->
     """
-    <p>Used <span id="disk-used"></span>B |
-    Free <span id="disk-free"></span>B |
-    Total <span id="disk-total"></span>B
-    (<span id="disk-percent"></span>%)</p>
+    <table class="simple">
+        <tr>
+            <td>U <span id="disk-used"></span>B</td>
+            <td>F <span id="disk-free"></span>B</td>
+            <td>T <span id="disk-total"></span>B</td>
+            <td><span id="disk-percent"></span>%</td>
+        </tr>
+    </table>
     <div class="bar"><div id="disk-bar" class="a"></div></div>
     """
 
@@ -418,8 +426,9 @@ update: (output, domEl) ->
 
 style: """
     base-color = #0df
+    text-color = #ddd
 
-    color: #ddd
+    color: text-color
     font-family: Helvetica Neue
     font-size: 9pt
     font-weight: 300
@@ -487,6 +496,18 @@ style: """
     table#top-procs td.name
         padding-left: 0.5em
 
+    table.simple
+        margin-left: auto
+        margin-right: auto
+
+    table.simple td
+        padding-left: 1ex
+        padding-right: 1ex
+        padding-top: 0
+        padding-bottom: 0
+        margin: 0
+        text-align: center
+
     dl
         margin: 0
 
@@ -519,7 +540,7 @@ style: """
 
     .bar
         width: 100%
-        border: 1px solid #ddd
+        border: 1px solid text-color
         border-radius: 4px
         height: 5px
         position: relative
