@@ -5,7 +5,7 @@ command: ""
 # How often to refresh the widget - if this is too short, then the widget will
 # fail to refresh because the commands take too long to run (especially the
 # ping commands)
-refreshFrequency: 5000
+refreshFrequency: 2000
 
 # Which modules to enable
 enabled_modules: [
@@ -20,7 +20,11 @@ enabled_modules: [
 ]
 
 # Hosts to ping with the ping module
-ping_hosts: ["8.8.8.8", "www.verizon.com"]
+ping_hosts: ["default_route", "8.8.8.8", "www.verizon.com"]
+
+# If your default route matches this, then ping additional hosts at home
+home_router: "192.168.1.1"
+additional_home_hosts: ["192.168.1.4"]
 
 ## Helper functions
 humanize: (value) ->
@@ -87,6 +91,10 @@ update_cpu_mem: (domEl) ->
             if not isNaN(usage)
                 total_usage += usage
         e.find("#cpu").text(total_usage.toPrecision(3))
+        if total_usage > 100
+            # Make the bar never go above 100 because of bad calculations with
+            # ps
+            total_usage = 100
         e.find("#cpu-bar").width("#{total_usage}%")
     )
     @run("vm_stat", (err, output) =>
@@ -274,12 +282,29 @@ render_ping: ->
 
 update_ping: (domEl) ->
     e = $(domEl).find("#ping")
-    for host in @ping_hosts
+    # Dynamically work out the default route if we include 'default_route' as
+    # a host to ping.
+    if @ping_hosts[0] == "default_route"
+        @ping_hosts_combined ||= []
+        @run("netstat -nr", (err, output) =>
+            @ping_hosts_combined = []
+            for line in output.split("\n")
+                m = line.match(/^default\s+([0-9.]+)/)
+                if m
+                    @ping_hosts_combined.push(m[1])
+                    if m[1] == @home_router
+                        @ping_hosts_combined = @ping_hosts_combined.concat(@additional_home_hosts)
+            @ping_hosts_combined = @ping_hosts_combined.concat(@ping_hosts[1..])
+        )
+    else
+        @ping_hosts_combined = @ping_hosts
+
+    for host in @ping_hosts_combined
         munged = host.replace(/\./g, "_")
         if e.find("#pingtitle-#{munged}").length == 0
             e.append("""
                 <dt id="pingtitle-#{munged}">#{host}</dt>
-                <dd id="pingvalue-#{munged}"></dd>
+                <dd id="pingvalue-#{munged}">...</dd>
             """)
         pingtitle = e.find("#pingtitle-#{munged}")
         pingvalue = e.find("#pingvalue-#{munged}")
@@ -368,7 +393,7 @@ style: """
         margin: 0
         margin-top: 0.5em
         margin-bottom: 0.25em
-        border-bottom: 1px solid white
+        border-bottom: 1px solid #ddd
 
     p
         margin: 0
@@ -425,12 +450,14 @@ style: """
 
     .bar
         width: 100%
-        border: 1px solid white
+        border: 1px solid #ddd
         height: 5px
 
     .bar div
         width: 50%
         height: 100%
-        background-color: white
+        background-color: #ddd
+        border-radius: 0 3px 3px 0
+        border-right: 1px solid #ddd
 
 """
