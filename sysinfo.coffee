@@ -205,7 +205,7 @@ render_wifi: ->
 
 update_wifi: (domEl) ->
     e = $(domEl).find("#wifi")
-    @run("/System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport -I", (err, output) ->
+    @run("/System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport -I", (err, output) =>
         wifi_info = {}
         for line in output.split("\n")
             m = line.match(/^\s*(\S+): (.*)/)
@@ -216,8 +216,10 @@ update_wifi: (domEl) ->
         if wifi_info['channel']
             wifi_info['channel'] = wifi_info['channel'].replace(/,-?1/, '')
         if wifi_info['AirPort'] == 'Off'
+            @state.wifi_on = false
             e.html("<dt>Wifi</dt><dd>Off</dd>")
         else
+            @state.wifi_on = true
             e.html("""
             <dl>
                 <dt>SSID</dt><dd>#{wifi_info['SSID']}</dd>
@@ -315,6 +317,10 @@ update_ping: (domEl) ->
     e = $(domEl).find("#ping")
     # Dynamically work out the default route if we include 'default_route' as
     # a host to ping.
+    if @state.wifi_on == false
+        # Note - if the wifi module isn't enabled, then wifi_on will be
+        # undefined and so we should be good.
+        @state.ping_hosts = []
     if @ping_hosts[0] == "default_route"
         @state.ping_hosts ||= []
         @run("netstat -nr", (err, output) =>
