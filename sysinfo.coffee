@@ -315,6 +315,8 @@ render_ping: ->
 
 update_ping: (domEl) ->
     e = $(domEl).find("#ping")
+    @state.ping_timeouts ?= {}
+    @state.ping_hosts ?= []
     # Dynamically work out the default route if we include 'default_route' as
     # a host to ping.
     if @state.wifi_on == false
@@ -322,7 +324,6 @@ update_ping: (domEl) ->
         # undefined and so we should be good.
         @state.ping_hosts = []
     if @ping_hosts[0] == "default_route"
-        @state.ping_hosts ||= []
         @run("netstat -nr", (err, output) =>
             @state.ping_hosts = []
             for line in output.split("\n")
@@ -339,9 +340,12 @@ update_ping: (domEl) ->
         # The list of hosts to ping just changed, clear displayed list that
         # contains the old hosts.
         e.empty()
+        # ... and reset the ping timeout count for the default route
+        @state.ping_timeouts = {}
     @state.old_ping_hosts = @state.ping_hosts
 
     for host in @state.ping_hosts
+        @state.ping_timeouts[host] ?= 0
         munged = host.replace(/\./g, "_")
         if e.find("#pingtitle-#{munged}").length == 0
             e.append("""
@@ -350,16 +354,24 @@ update_ping: (domEl) ->
             """)
         pingtitle = e.find("#pingtitle-#{munged}")
         pingvalue = e.find("#pingvalue-#{munged}")
-        do (pingtitle, pingvalue, @run) ->
-            @run("ping -n -c 1 -W 1 #{host} || true", (err, output) ->
+        do (pingtitle, pingvalue, host) =>
+            @run("ping -n -c 1 -W 1 #{host} || true", (err, output) =>
                 if output
                     [..., lastline, _] = output.split("\n")
                 else
                     lastline = ""
                 if lastline.startsWith('round-trip')
                     pingvalue.text("#{lastline.split("/")[4]}ms").removeClass("error")
+                    @state.ping_timeouts[host] = 0
                 else
-                    pingvalue.text("TIMEOUT").addClass("error")
+                    if @state.ping_timeouts[host] > 5
+                        # If there have been many timeouts, e.g. you have a
+                        # default route that doesn't respond to pings, don't
+                        # keep on printing TIMEOUT in red
+                        pingvalue.text("timeout").removeClass("error")
+                    else
+                        pingvalue.text("TIMEOUT").addClass("error")
+                    @state.ping_timeouts[host]++
             )
 
 render_running_vms: ->
