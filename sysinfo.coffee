@@ -302,18 +302,18 @@ update_bandwidth: (domEl) ->
 
         old_bw = @state.bandwidth
         if old_bw?
-            time_diff = (new_bw['timestamp'] - old_bw['timestamp']) / 1000
-            if time_diff < 10
+            time_diff = (new_bw['timestamp'] - old_bw['timestamp'])
+            if time_diff < 10000
                 # We don't care about showing bandwidth if more than 10 seconds
                 # have passed between iterations
                 e.empty()
                 for k in Object.keys(old_bw['bandwidth']).sort()
                     oldv = old_bw['bandwidth'][k]
                     newv = new_bw['bandwidth'][k] || [0,0]
-                    bytes_in_raw  = (parseInt(newv[0], 10) - \
-                        parseInt(oldv[0], 10)) / time_diff
-                    bytes_out_raw = (parseInt(newv[1], 10) - \
-                        parseInt(oldv[1], 10)) / time_diff
+                    bytes_in_raw  = ((parseInt(newv[0], 10) - \
+                        parseInt(oldv[0], 10)) * 1000) / time_diff
+                    bytes_out_raw = ((parseInt(newv[1], 10) - \
+                        parseInt(oldv[1], 10)) * 1000) / time_diff
                     bytes_in = @humanize(bytes_in_raw)
                     bytes_out = @humanize(bytes_out_raw)
                     unless bytes_in_raw == 0 and bytes_out_raw == 0
