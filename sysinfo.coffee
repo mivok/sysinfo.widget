@@ -403,6 +403,8 @@ update: (output, domEl) ->
         this["update_#{module}"](domEl)
 
 style: """
+    base-color = #0df
+
     color: #ddd
     font-family: Helvetica Neue
     font-size: 9pt
@@ -446,7 +448,7 @@ style: """
         margin: 0
         margin-top: 0.5em
         margin-bottom: 0.25em
-        border-bottom: 1px solid #ddd
+        border-bottom: 1px solid desaturate(lighten(base-color, 10), 60)
 
     p
         margin: 0
@@ -524,20 +526,18 @@ style: """
     .bar div.yellow
         background-color: rgba(#dd6, 0.7)
 
-    bar-base = #0df
-
     .bar div.a
-        background-color: darken(bar-base, 15)
+        background-color: darken(base-color, 15)
 
     .bar div.b
-        background-color: darken(bar-base, 20)
+        background-color: darken(base-color, 20)
 
     .bar div.c
-        background-color: darken(bar-base, 25)
+        background-color: darken(base-color, 25)
 
     .bar div.d
-        background-color: darken(desaturate(complement(bar-base), 70), 10)
+        background-color: darken(desaturate(complement(base-color), 70), 10)
 
     .bar div.e
-        background-color: darken(desaturate(complement(bar-base), 70), 20)
+        background-color: darken(desaturate(complement(base-color), 70), 20)
 """
