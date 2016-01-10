@@ -65,9 +65,17 @@ render_module: (module) ->
 render_cpu_mem: ->
     """
     <p>CPU: <span id="cpu"></span>%</p>
-    <p>Free: <span id="memory-free"></span>B, Wired: <span id="memory-wired"></span>B,
-       Active: <span id="memory-active"></span>B, Inactive:
-       <span id="memory-inactive"></span>B</p>
+    <div class="bar"><div id="cpu-bar"></div></div>
+    <p>
+        Free: <span id="mem-free"></span>B |
+        Wired: <span id="mem-wired"></span>B |
+        Active: <span id="mem-active"></span>B
+    </p>
+    <p>
+        Compressed: <span id="mem-compressed"></span>B |
+        Cached: <span id="mem-cached"></span>B
+    </p>
+    <div class="bar"><div id="mem-bar"></div></div>
     """
 
 update_cpu_mem: (domEl) ->
@@ -79,6 +87,7 @@ update_cpu_mem: (domEl) ->
             if not isNaN(usage)
                 total_usage += usage
         e.find("#cpu").text(total_usage.toPrecision(3))
+        e.find("#cpu-bar").width("#{total_usage}%")
     )
     @run("vm_stat", (err, output) =>
         page_size = 0
@@ -93,10 +102,26 @@ update_cpu_mem: (domEl) ->
                 stats[m[1]] = parseInt(m[2])
                 if m[1].match(/[Pp]ages/)
                     stats[m[1]] *= page_size
-        e.find("#memory-free").text(@humanize(stats["Pages free"]))
-        e.find("#memory-active").text(@humanize(stats["Pages active"]))
-        e.find("#memory-inactive").text(@humanize(stats["Pages inactive"]))
-        e.find("#memory-wired").text(@humanize(stats["Pages wired down"]))
+        e.find("#mem-free").text(@humanize(stats["Pages free"]))
+        e.find("#mem-active").text(@humanize(stats["Pages active"]))
+        e.find("#mem-wired").text(@humanize(stats["Pages wired down"]))
+        e.find("#mem-cached").text(@humanize(stats["File-backed pages"]))
+        e.find("#mem-compressed").text(@humanize(stats["Pages occupied by compressor"]))
+        # This is close to all the memory on the system but I'm not sure if
+        # I'm missing anything
+        total_mem = \
+            stats["Pages free"] + \
+            stats["Pages active"] + \
+            stats["Pages speculative"] + \
+            stats["Pages wired down"] + \
+            stats["File-backed pages"] + \
+            stats["Pages occupied by compressor"]
+        used_mem = \
+            stats["Pages active"] + \
+            stats["Pages speculative"] + \
+            stats["Pages wired down"] + \
+            stats["Pages occupied by compressor"]
+        e.find("#mem-bar").width("#{used_mem / total_mem * 100}%")
     )
 
 render_top_procs: ->
@@ -117,10 +142,11 @@ update_top_procs: (domEl) ->
 
 render_disk_space: ->
     """
-    <p>Used: <span id="disk-used"></span>B,
-    Free: <span id="disk-free"></span>,
-    Total: <span id="disk-total"></span>B
+    <p>Used <span id="disk-used"></span>B |
+    Free <span id="disk-free"></span>B |
+    Total <span id="disk-total"></span>B
     (<span id="disk-percent"></span>)</p>
+    <div class="bar"><div id="disk-bar"></div></div>
     """
 
 update_disk_space: (domEl) ->
@@ -132,6 +158,7 @@ update_disk_space: (domEl) ->
         e.find("#disk-used").text(@humanize(parts[2] * 1024))
         e.find("#disk-free").text(@humanize(parts[3] * 1024))
         e.find("#disk-percent").text(parts[4])
+        e.find("#disk-bar").width("#{parts[4]}%")
     )
 
 render_wifi: ->
@@ -345,6 +372,7 @@ style: """
 
     p
         margin: 0
+        text-align: center
 
     table#top-procs
         border-spacing: 0
@@ -395,5 +423,14 @@ style: """
         margin: 0
         padding: 0
 
+    .bar
+        width: 100%
+        border: 1px solid white
+        height: 5px
+
+    .bar div
+        width: 50%
+        height: 100%
+        background-color: white
 
 """
