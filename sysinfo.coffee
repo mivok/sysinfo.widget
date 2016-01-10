@@ -9,6 +9,7 @@ refreshFrequency: 2000
 
 # Which modules to enable
 enabled_modules: [
+    "hostname",
     "cpu_mem",
     "top_procs",
     "disk_space",
@@ -67,10 +68,23 @@ modules: {
 ## Rendering functions
 render_module: (module) ->
     info = @modules[module]
-    """
-    <h2><i class=\"fa fa-#{info['icon']}\"></i> #{info['title']}</h2>
-    #{this["render_#{module}"]()}
-    """
+    if info?
+        # If we specified an icon/title, then display it
+        """
+        <h2><i class=\"fa fa-#{info['icon']}\"></i> #{info['title']}</h2>
+        #{this["render_#{module}"]()}
+        """
+    else
+        # Otherwise, just render the module as is and let it deal with its own
+        # formatting
+        @["render_#{module}"]()
+
+render_hostname: ->
+    """<h1><span id="hostname"></span></h1>"""
+
+update_hostname: (domEl) ->
+    @run("hostname", (err, output) =>
+        $(domEl).find("#hostname").text(output.trim()))
 
 render_cpu_mem: ->
     """
