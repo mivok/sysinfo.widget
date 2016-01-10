@@ -79,7 +79,13 @@ render_cpu_mem: ->
         Compressed: <span id="mem-compressed"></span>B |
         Cached: <span id="mem-cached"></span>B
     </p>
-    <div class="bar"><div id="mem-bar"></div></div>
+    <div class="bar">
+        <div id="mem-bar-cached" class="a"></div>
+        <div id="mem-bar-compressed" class="b"></div>
+        <div id="mem-bar-speculative" class="c"></div>
+        <div id="mem-bar-wired" class="d"></div>
+        <div id="mem-bar-active" class="e"></div>
+    </div>
     """
 
 update_cpu_mem: (domEl) ->
@@ -96,6 +102,13 @@ update_cpu_mem: (domEl) ->
             # ps
             total_usage = 100
         e.find("#cpu-bar").width("#{total_usage}%")
+        if total_usage > 80
+            barclass = "red"
+        else if total_usage > 60
+            barclass = "yellow"
+        else
+            barclass = "a"
+        e.find("#cpu-bar").removeClass("a yellow red").addClass(barclass)
     )
     @run("vm_stat", (err, output) =>
         page_size = 0
@@ -124,12 +137,16 @@ update_cpu_mem: (domEl) ->
             stats["Pages wired down"] + \
             stats["File-backed pages"] + \
             stats["Pages occupied by compressor"]
-        used_mem = \
-            stats["Pages active"] + \
-            stats["Pages speculative"] + \
-            stats["Pages wired down"] + \
-            stats["Pages occupied by compressor"]
-        e.find("#mem-bar").width("#{used_mem / total_mem * 100}%")
+        used_mem = stats["Pages active"]
+        e.find("#mem-bar-active").width("#{used_mem / total_mem * 100}%")
+        used_mem += stats["Pages wired down"]
+        e.find("#mem-bar-wired").width("#{used_mem / total_mem * 100}%")
+        used_mem += stats["Pages speculative"]
+        e.find("#mem-bar-speculative").width("#{used_mem / total_mem * 100}%")
+        used_mem += stats["Pages occupied by compressor"]
+        e.find("#mem-bar-compressed").width("#{used_mem / total_mem * 100}%")
+        used_mem += stats["File-backed pages"]
+        e.find("#mem-bar-cached").width("#{used_mem / total_mem * 100}%")
     )
 
 render_top_procs: ->
@@ -153,8 +170,8 @@ render_disk_space: ->
     <p>Used <span id="disk-used"></span>B |
     Free <span id="disk-free"></span>B |
     Total <span id="disk-total"></span>B
-    (<span id="disk-percent"></span>)</p>
-    <div class="bar"><div id="disk-bar"></div></div>
+    (<span id="disk-percent"></span>%)</p>
+    <div class="bar"><div id="disk-bar" class="a"></div></div>
     """
 
 update_disk_space: (domEl) ->
@@ -165,8 +182,16 @@ update_disk_space: (domEl) ->
         e.find("#disk-total").text(@humanize(parts[1] * 1024))
         e.find("#disk-used").text(@humanize(parts[2] * 1024))
         e.find("#disk-free").text(@humanize(parts[3] * 1024))
-        e.find("#disk-percent").text(parts[4])
-        e.find("#disk-bar").width("#{parts[4]}%")
+        percent = parseInt(parts[4])
+        e.find("#disk-percent").text(percent)
+        e.find("#disk-bar").width("#{percent}%")
+        if percent > 90
+            barclass = "red"
+        else if percent > 80
+            barclass = "yellow"
+        else
+            barclass = "a"
+        e.find("#disk-bar").removeClass("a yellow red").addClass(barclass)
     )
 
 render_wifi: ->
@@ -451,13 +476,40 @@ style: """
     .bar
         width: 100%
         border: 1px solid #ddd
+        border-radius: 4px
         height: 5px
+        position: relative
 
     .bar div
         width: 50%
-        height: 100%
-        background-color: #ddd
-        border-radius: 0 3px 3px 0
-        border-right: 1px solid #ddd
+        height: 5px
+        background-color: rgba(#fff, 0.7)
+        border-radius: 4px
+        position: absolute
 
+    .bar div.red
+        background-color: rgba(#d66, 0.7)
+
+    .bar div.green
+        background-color: rgba(#6d6, 0.7)
+
+    .bar div.yellow
+        background-color: rgba(#dd6, 0.7)
+
+    bar-base = #0df
+
+    .bar div.a
+        background-color: darken(bar-base, 15)
+
+    .bar div.b
+        background-color: darken(bar-base, 20)
+
+    .bar div.c
+        background-color: darken(bar-base, 25)
+
+    .bar div.d
+        background-color: darken(desaturate(complement(bar-base), 70), 10)
+
+    .bar div.e
+        background-color: darken(desaturate(complement(bar-base), 70), 20)
 """
