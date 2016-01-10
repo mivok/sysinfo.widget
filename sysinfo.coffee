@@ -50,6 +50,9 @@ humanize: (value) ->
     else
         "#{value.toPrecision(3)}#{suffix}"
 
+arrayEqual: (a, b) ->
+    a and b and a.length is b.length and a.every (elem, i) -> elem is b[i]
+
 ## Module definitions
 modules: {
     "cpu_mem": {"icon": "laptop", "title": "CPU/Memory"},
@@ -313,21 +316,26 @@ update_ping: (domEl) ->
     # Dynamically work out the default route if we include 'default_route' as
     # a host to ping.
     if @ping_hosts[0] == "default_route"
-        @ping_hosts_combined ||= []
+        @state.ping_hosts ||= []
         @run("netstat -nr", (err, output) =>
-            @ping_hosts_combined = []
+            @state.ping_hosts = []
             for line in output.split("\n")
                 m = line.match(/^default\s+([0-9.]+)/)
                 if m
-                    @ping_hosts_combined.push(m[1])
+                    @state.ping_hosts.push(m[1])
                     if m[1] == @home_router
-                        @ping_hosts_combined = @ping_hosts_combined.concat(@additional_home_hosts)
-            @ping_hosts_combined = @ping_hosts_combined.concat(@ping_hosts[1..])
+                        @state.ping_hosts = @state.ping_hosts.concat(@additional_home_hosts)
+            @state.ping_hosts = @state.ping_hosts.concat(@ping_hosts[1..])
         )
     else
-        @ping_hosts_combined = @ping_hosts
+        @state.ping_hosts = @ping_hosts
+    if not @arrayEqual(@state.old_ping_hosts, @state.ping_hosts)
+        # The list of hosts to ping just changed, clear displayed list that
+        # contains the old hosts.
+        e.empty()
+    @state.old_ping_hosts = @state.ping_hosts
 
-    for host in @ping_hosts_combined
+    for host in @state.ping_hosts
         munged = host.replace(/\./g, "_")
         if e.find("#pingtitle-#{munged}").length == 0
             e.append("""
