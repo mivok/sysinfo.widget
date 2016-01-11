@@ -84,6 +84,7 @@ render_hostname: ->
 
 update_hostname: (domEl) ->
     @run("hostname", (err, output) =>
+        console.log("hostname: #{err}") if err
         $(domEl).find("#hostname").text(output.trim()))
 
 render_cpu_mem: ->
@@ -114,6 +115,7 @@ render_cpu_mem: ->
 update_cpu_mem: (domEl) ->
     e = $(domEl)
     @run("ps -A -o %cpu", (err, output) ->
+        console.log("cpu_mem ps: #{err}") if err
         total_usage = 0.0
         for line in output.split("\n")
             usage = parseFloat(line)
@@ -134,6 +136,7 @@ update_cpu_mem: (domEl) ->
         e.find("#cpu-bar").removeClass("a yellow red").addClass(barclass)
     )
     @run("vm_stat", (err, output) =>
+        console.log("cpu_mem vm_stat: #{err}") if err
         page_size = 0
         stats = {}
         for line in output.split("\n")
@@ -178,6 +181,7 @@ render_top_procs: ->
 
 update_top_procs: (domEl) ->
     @run("ps axro 'pid, %cpu, ucomm'", (err, output) ->
+        console.log("top_procs ps: #{err}") if err
         e = $(domEl).find("#top-procs")
         e.empty()
         top_procs = (p.match(/\S+/g) for p in output.split("\n"))[1..5]
@@ -205,6 +209,7 @@ render_disk_space: ->
 update_disk_space: (domEl) ->
     e = $(domEl)
     @run("df -k /", (err, output) =>
+        console.log("disk_space df: #{err}") if err
         [..., lastline, _] = output.split("\n")
         parts = lastline.split(/\s+/)
         e.find("#disk-total").text(@humanize(parts[1] * 1024))
@@ -228,6 +233,7 @@ render_wifi: ->
 update_wifi: (domEl) ->
     e = $(domEl).find("#wifi")
     @run("/System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport -I", (err, output) =>
+        console.log("wifi airport: #{err}") if err
         wifi_info = {}
         for line in output.split("\n")
             m = line.match(/^\s*(\S+): (.*)/)
@@ -260,6 +266,7 @@ render_network: ->
 update_network: (domEl) ->
     e = $(domEl).find("#network")
     @run("ifconfig -a", (err, output) ->
+        console.log("network ifconfig: #{err}") if err
         ip_info = {}
         cur_if = ""
         for line in output.split("\n")
@@ -279,6 +286,7 @@ update_network: (domEl) ->
     )
     f = $(domEl).find("#dns")
     @run("cat /etc/resolv.conf", (err, output) ->
+        console.log("network cat /etc/resolv.conf: #{err}") if err
         nameservers = []
         for line in output.split("\n")
             m = line.match(/^nameserver (\S+)/)
@@ -294,6 +302,7 @@ update_bandwidth: (domEl) ->
     e = $(domEl).find("#bandwidth")
     @state.bandwidth ||= {}
     @run("netstat -inb", (err, output) =>
+        console.log("bandwidth netstat: #{err}") if err
         new_bw = {"timestamp": Date.now(), "bandwidth": {}}
         for line in output.split("\n")[1..]
             parts = line.split(/\s+/)
@@ -347,6 +356,7 @@ update_ping: (domEl) ->
         @state.ping_hosts = []
     if @ping_hosts[0] == "default_route"
         @run("netstat -nr", (err, output) =>
+            console.log("ping netstat: #{err}") if err
             @state.ping_hosts = []
             for line in output.split("\n")
                 m = line.match(/^default\s+([0-9.]+)/)
@@ -402,6 +412,7 @@ render_running_vms: ->
 update_running_vms: (domEl) ->
     e = $(domEl).find("#runningvms")
     @run("/usr/local/bin/VBoxManage list runningvms", (err, output) ->
+        console.log("running_vms VBoxManage: #{err}") if err
         e.empty()
         for line in output.split("\n")
             m = line.match(/"(.*)"/)
