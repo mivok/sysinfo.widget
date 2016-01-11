@@ -2,9 +2,9 @@ command: ""
 
 ## Configuration
 
-# How often to refresh the widget - if this is too short, then the widget will
-# fail to refresh because the commands take too long to run (especially the
-# ping commands)
+# How often to refresh the widget in ms
+# Note: individual modules will refresh at different intervals below. This
+# just specifies the smallest refresh interval.
 refreshFrequency: 2000
 
 # Which modules to enable
@@ -65,6 +65,19 @@ modules: {
     "ping": {"icon": "industry", "title": "Ping"}
     "running_vms": {"icon": "server", "title": "Running VMs"}
 }
+
+update_frequencies: {
+    "hostname": 10000,
+    "cpu_mem": 2000,
+    "top_procs": 2000,
+    "disk_space": 10000,
+    "network": 10000,
+    "wifi": 10000,
+    "bandwidth": 2000,
+    "ping": 5000,
+    "running_vms": 5000
+}
+
 ## Rendering functions
 render_module: (module) ->
     info = @modules[module]
@@ -432,8 +445,14 @@ render: (_) ->
     """
 
 update: (output, domEl) ->
+    @state['last_updated'] ?= {}
+    lu = @state['last_updated']
+    now = Date.now()
     for module in @enabled_modules
-        this["update_#{module}"](domEl)
+        if not lu[module]? or lu[module] + @update_frequencies[module] <= now
+            #console.log("Updating module: #{module}")
+            this["update_#{module}"](domEl)
+            lu[module] = now
 
 style: """
     base-color = #0df
