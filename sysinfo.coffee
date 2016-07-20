@@ -289,8 +289,13 @@ update_network: (domEl) ->
                 ip_info[cur_if] = []
                 continue
             m = line.match(/^\s+inet6? ([0-9a-f.:]+)/)
-            if m and not m[1].startsWith("fe80")
-                ip_info[cur_if].push(m[1])
+            if not m
+                continue
+            if m[1].startsWith("fe80")
+                continue
+            if m[1].startsWith("fd00")
+                continue
+            ip_info[cur_if].push(m[1])
         e.empty()
         for iface in Object.keys(ip_info).sort()
             ips = ip_info[iface]
