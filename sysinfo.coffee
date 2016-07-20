@@ -467,7 +467,7 @@ style: """
     font-family: Helvetica Neue
     font-size: 9pt
     font-weight: 300
-    line-height: 1.5
+    line-height: 1.2
     width: 250px
     text-align: left
     padding: 10px
