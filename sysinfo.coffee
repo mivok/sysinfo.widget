@@ -25,7 +25,7 @@ ping_hosts: ["default_route", "8.8.8.8", "www.verizon.com"]
 
 # If your default route matches this, then ping additional hosts at home
 home_router: "192.168.1.1"
-additional_home_hosts: ["192.168.1.4"]
+additional_home_hosts: ["192.168.1.3"]
 
 # Storage of state between refreshes
 state: {}
@@ -225,10 +225,15 @@ update_disk_space: (domEl) ->
         console.log("disk_space df: #{err}") if err
         [..., lastline, _] = output.split("\n")
         parts = lastline.split(/\s+/)
-        e.find("#disk-total").text(@humanize(parts[1] * 1024))
-        e.find("#disk-used").text(@humanize(parts[2] * 1024))
-        e.find("#disk-free").text(@humanize(parts[3] * 1024))
-        percent = parseInt(parts[4])
+        total = parts[1]
+        free = parts[3]
+        # Subtract free from total to get used as the used space reported is
+        # for a single volume and I want the entire disk
+        used = total - free
+        e.find("#disk-total").text(@humanize(total * 1024))
+        e.find("#disk-used").text(@humanize(used * 1024))
+        e.find("#disk-free").text(@humanize(free * 1024))
+        percent = parseInt(100 * used / total)
         e.find("#disk-percent").text(percent)
         e.find("#disk-bar").width("#{percent}%")
         if percent > 90
