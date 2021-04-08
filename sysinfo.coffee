@@ -373,10 +373,6 @@ update_ping: (domEl) ->
     @state.ping_hosts ?= []
     # Dynamically work out the default route if we include 'default_route' as
     # a host to ping.
-    if @state.wifi_on == false
-        # Note - if the wifi module isn't enabled, then wifi_on will be
-        # undefined and so we should be good.
-        @state.ping_hosts = []
     if @ping_hosts[0] == "default_route"
         @run("netstat -nr", (err, output) =>
             console.log("ping netstat: #{err}") if err
