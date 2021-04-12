@@ -65,7 +65,7 @@ modules: {
     "bandwidth": {"icon": "download", "title": "Bandwidth"},
     "ping": {"icon": "industry", "title": "Ping"},
     "running_vms": {"icon": "server", "title": "Running VMs"},
-    "audio_devices": {"icon": "speaker", "title": "Audio Devices"}
+    "audio_devices": {"icon": "volume-up", "title": "Audio Devices"}
 }
 
 update_frequencies: {
