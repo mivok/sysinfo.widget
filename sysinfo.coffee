@@ -17,6 +17,7 @@ enabled_modules: [
     "wifi",
     "bandwidth",
     "ping",
+    "audio_devices",
     "running_vms"
 ]
 
@@ -57,13 +58,14 @@ arrayEqual: (a, b) ->
 ## Module definitions
 modules: {
     "cpu_mem": {"icon": "laptop", "title": "CPU/Memory"},
-    "top_procs": {"icon": "trophy", "title": "Top Processes"}
-    "disk_space": {"icon": "hdd-o", "title": "Disk space"}
-    "network": {"icon": "cloud", "title": "Network"}
-    "wifi": {"icon": "wifi", "title": "Wifi"}
-    "bandwidth": {"icon": "download", "title": "Bandwidth"}
-    "ping": {"icon": "industry", "title": "Ping"}
-    "running_vms": {"icon": "server", "title": "Running VMs"}
+    "top_procs": {"icon": "trophy", "title": "Top Processes"},
+    "disk_space": {"icon": "hdd-o", "title": "Disk space"},
+    "network": {"icon": "cloud", "title": "Network"},
+    "wifi": {"icon": "wifi", "title": "Wifi"},
+    "bandwidth": {"icon": "download", "title": "Bandwidth"},
+    "ping": {"icon": "industry", "title": "Ping"},
+    "running_vms": {"icon": "server", "title": "Running VMs"},
+    "audio_devices": {"icon": "speaker", "title": "Audio Devices"}
 }
 
 update_frequencies: {
@@ -75,7 +77,8 @@ update_frequencies: {
     "wifi": 10000,
     "bandwidth": 2000,
     "ping": 5000,
-    "running_vms": 5000
+    "running_vms": 5000,
+    "audio_devices": 10000
 }
 
 ## Rendering functions
@@ -442,6 +445,24 @@ update_running_vms: (domEl) ->
                 if m
                     vmname = "#{m[1]} (#{m[2]})"
                 e.append("<li>vbox - #{vmname}</li>")
+    )
+
+render_audio_devices: ->
+    """<dl id="audiodevices">
+        <dt>Output</dt>
+        <dd id="audio_output"></dd>
+        <dt>Input</dt>
+        <dd id="audio_input"></dd>
+    </dl>"""
+
+update_audio_devices: (domEl) ->
+    @run("/usr/local/bin/SwitchAudioSource -c -t output", (err, output) ->
+        console.log("audio_devices SwitchAudioSource: #{err}") if err
+        $(domEl).find("#audio_output").text(output.trim())
+    )
+    @run("/usr/local/bin/SwitchAudioSource -c -t input", (err, output) ->
+        console.log("audio_devices SwitchAudioSource: #{err}") if err
+        $(domEl).find("#audio_input").text(output.trim())
     )
 
 render: (_) ->
