@@ -26,31 +26,22 @@ const module_config = {
 // Helper functions
 //
 
-// Wrapper around setTimeout for an infinitely running timer
-const recurringTimer = (interval, callback, run_immediately = true) => {
-    const timer = setTimeout(() => {
-        // Make sure we start another instance of the timer first
-        recurringTimer(interval, callback);
-        // Then call the callback
-        callback();
-    }, interval);
-
-    // Allow calling the callback immediately for instant updates
-    if (run_immediately) {
-        callback();
-    }
-    return timer;
-}
+// Keep track of the number of running timers
+let TimerCount = 0;
 
 // Wrapper around recurringTimer for use as a react hook (use this for setting
 // a recurring timer inside a functional react component)
 const useRecurringTimer = (interval, callback) => {
     useEffect(() => {
-      let timer = recurringTimer(interval, callback);
+      const timer = setInterval(callback, interval);
+      TimerCount++;
+      // Run the first iteration immediately
+      callback();
 
       // Cancel the recurring timer when cleaning up
       return () => {
-        clearTimeout(timer);
+        clearInterval(timer);
+        TimerCount--;
       }
     }, []);
 }
@@ -136,7 +127,8 @@ const ModuleTitle = styled.h2({
   margin: 0,
   marginTop: '0.5em',
   marginBottom: '0.25em',
-  borderBottom: '1px solid desaturate(lighten(base-color, 10), 60)',
+  // The 8 at the end means 50% opacity
+  borderBottom: `1px solid ${baseColor}8`,
 });
 
 const BarHeader = styled.p({
@@ -210,48 +202,47 @@ const SimpleTable = css({
   }
 })
 
-/* Original styles
-    table#top-procs
-        borderSpacing: 0,
-        width: '100%',
+const TopProcsTable = styled.table({
+  borderSpacing: 0,
+  width: '100%',
+  '& td': {
+    paddingTop: 0,
+    paddingBottom: 0,
+  },
+  '& td.pid': {
+    width: '5ex',
+    textAlign: 'right',
+  },
+  '& td.cpu': {
+    textAlign: 'right',
+    width: '7ex',
+  },
+  '& td.name': {
+    paddingLeft: '0.5em',
+  },
+});
 
-    table#top-procs td
-        padding-top: 0,
-        padding-bottom: 0,
+const KVList = styled.dl(({wide}) => ({
+  margin: 0,
+  '& dt': {
+    float: 'left',
+    margin: 0,
+    width: wide ? '50%' : '25%',
+    fontWeight: 500,
+  },
+  '& dd': {
+    float: 'left',
+    margin: 0,
+    width: wide ? '50%': '75%',
+  },
+  '&:after': {
+    display: 'block',
+    clear: 'both',
+    content: '""',
+  }
+}));
 
-    table#top-procs td.pid
-        width: '5ex',
-        textAlign: 'right',
-
-    table#top-procs td.cpu
-        textAlign: 'right',
-        width: '7ex',
-
-    table#top-procs td.name
-        paddingLeft: '0.5em',
-
-    dl
-        margin: 0,
-
-    dd
-        float: 'left',
-        margin: 0,
-        width: '75%',
-
-    dt
-        float: 'left',
-        margin: 0,
-        width: '25%',
-        fontWeight: 500,
-
-    dl:after
-        display: 'block',
-        clear: 'both',
-        content: '',
-
-    dl.wide dd, dl.wide dt
-        width: '50%',
-
+/*
     .error
         color: 'red',
 
@@ -270,7 +261,7 @@ const Icon = ({name}) => <i className={`fa fa-${name}`}></i>;
 const Module = ({title, icon, children}) => {
   return(
     <div>
-      <ModuleTitle><Icon name={icon} />{title}</ModuleTitle>
+      <ModuleTitle><Icon name={icon} /> {title}</ModuleTitle>
       {children}
     </div>
   );
@@ -369,11 +360,93 @@ const CpuMemory = () => {
     );
 }
 
+const TopProcs = () => {
+  const [procs, setProcs] = useState([]);
+
+  useTimedCommand(2000, "ps axro 'pid, %cpu, ucomm'", (output) => {
+    setProcs(output.split("\n")
+      .slice(1,6)
+      .map((p) => p.match(/\S+/g))
+      .map((m) => ({pid: m[0], cpu: m[1], name: m[2]})));
+  });
+
+  const topProcs = procs.map((p) =>
+    <tr key={p['pid']}>
+      <td>{p['pid']}</td>
+      <td>{p['cpu']}</td>
+      <td>{p['name']}</td>
+    </tr>
+  )
+
+  return(
+    <Module title="Top Processes" icon="trophy">
+      <TopProcsTable>
+        <tbody>
+          {topProcs}
+        </tbody>
+      </TopProcsTable>
+    </Module>
+  );
+}
+
+const DiskSpace = () => {
+  const [total, setTotal] = useState(1);
+  const [used, setUsed] = useState(0);
+  const [free, setFree] = useState(0);
+
+  useTimedCommand(10000, "df -k /", (output) => {
+    const lines = output.split("\n");
+    const lastline = lines[lines.length - 2];
+    const [_fs, total, _used, free] = lastline.split(/\s+/);
+
+    setTotal(total);
+    // We don't use the used column from df here as it only gives us the used
+    // space on the current filesystem. This gets us the used space on the
+    // entire disk.
+    setUsed(total - free);
+    setFree(free);
+  });
+
+  return(
+    <Module title="Disk Space" icon="hdd-o">
+      <table className={SimpleTable}>
+        <tbody>
+          <tr>
+            <td>U {humanize(used * 1024)}B</td>
+            <td>F {humanize(free * 1024)}B</td>
+            <td>T {humanize(total * 1024)}B</td>
+            <td>{parseInt(100 * used / total)}%</td>
+          </tr>
+        </tbody>
+      </table>
+      <Bar><Segment color="auto" width={used / total * 100} /></Bar>
+    </Module>
+  );
+}
+
+const DebugInfo = () => {
+  const [timerCount, setTimerCount] = useState();
+
+  useRecurringTimer(1000, () => {
+    setTimerCount(TimerCount);
+  })
+  return(
+    <Module title="Debug" icon="bug">
+      <KVList>
+        <dt>Timers:</dt><dd>{timerCount}</dd>
+      </KVList>
+    </Module>
+  );
+}
+
 // Main render function - add modules here
 export const render = (state) => (
   <div>
     <Background />
     <Hostname />
     <CpuMemory />
+    <TopProcs />
+    <DiskSpace />
+    <DebugInfo />
   </div>
 );
