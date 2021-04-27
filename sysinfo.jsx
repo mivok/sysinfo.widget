@@ -424,6 +424,58 @@ const DiskSpace = () => {
   );
 }
 
+const Network = () => {
+  const [interfaces, setInterfaces] = useState({});
+  const [nameservers, setNameservers] = useState([]);
+
+  useTimedCommand(10000, "ifconfig -a", (output) => {
+    const lines = output.split("\n");
+    const ip_info = {};
+    let cur_if = "";
+    for (const line of lines) {
+      // Interface name
+      const ifMatch = line.match(/^([a-z0-9]+):/);
+      if (ifMatch) {
+        cur_if = ifMatch[1]
+        ip_info[cur_if] = []
+        continue
+      }
+      // Ip address
+      const ipMatch = line.match(/^\s+inet6? ([0-9a-f.:]+)/)
+      if (ipMatch && !/^(fe80|fd00)/.test(ipMatch[1])) {
+        ip_info[cur_if].push(ipMatch[1])
+      }
+    }
+    setInterfaces(Object.fromEntries(Object.entries(ip_info).filter(
+      ([iface, ips]) => (iface != 'lo0' && ips.length > 0)
+    )));
+  });
+
+  useTimedCommand(10000, "cat /etc/resolv.conf", (output) => {
+    const ns = []
+    output.split("\n").map((line) => {
+      const m = line.match(/^nameserver (\S+)/);
+      if (m) {
+        ns.push(m[1]);
+      }
+    })
+    setNameservers(ns);
+  });
+
+  const ifInfo = Object.keys(interfaces).map((ifName) => (
+    <><dt key={ifName}>{ifName}</dt><dd>{interfaces[ifName].join(", ")}</dd></>
+  ))
+
+  return(
+    <Module title="Network" icon="cloud">
+      <KVList>
+        {ifInfo}
+        <dt key="DNS">DNS</dt><dd>{nameservers.join(", ")}</dd>
+      </KVList>
+    </Module>
+  );
+}
+
 const DebugInfo = () => {
   const [timerCount, setTimerCount] = useState();
 
@@ -447,6 +499,7 @@ export const render = (state) => (
     <CpuMemory />
     <TopProcs />
     <DiskSpace />
+    <Network />
     <DebugInfo />
   </div>
 );
