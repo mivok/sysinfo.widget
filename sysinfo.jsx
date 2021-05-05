@@ -476,6 +476,48 @@ const Network = () => {
   );
 }
 
+const Wifi = () => {
+  const [wifiInfo, setWifiInfo] = useState({});
+
+  useTimedCommand(10000, "/System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport -I", (output) => {
+    const newWifiInfo = {}
+    for (const line of output.split("\n")) {
+      const m = line.match(/^\s*(\S+): (.*)/);
+      if (m) {
+        newWifiInfo[m[1]] = m[2]
+      }
+    }
+
+    // Show SNR value
+    if (newWifiInfo['agrCtlRSSI']) {
+      newWifiInfo["SNR"] = parseInt(newWifiInfo["agrCtlRSSI"]) - parseInt(newWifiInfo["agrCtlNoise"])
+    }
+
+    setWifiInfo(newWifiInfo);
+  });
+
+  let wifiInfoFormatted;
+  if (wifiInfo['Airport'] == 'Off') {
+    wifiInfoFormatted = <><dt>Wifi</dt><dd>Off</dd></>
+  } else {
+    wifiInfoFormatted = <>
+        <dt>BSSID</dt><dd>{wifiInfo['BSSID']}</dd>
+        <dt>Speed</dt><dd>{wifiInfo['lastTxRate']}Mbps /
+        {wifiInfo['maxRate']}Mbps</dd>
+        <dt>SNR</dt><dd>{wifiInfo['SNR']}dB</dd>
+        <dt>Channel</dt><dd>{wifiInfo['channel']}</dd>
+      </>
+  }
+
+  return(
+    <Module title="Wifi" icon="wifi">
+      <KVList>
+        {wifiInfoFormatted}
+      </KVList>
+    </Module>
+  );
+}
+
 const DebugInfo = () => {
   const [timerCount, setTimerCount] = useState();
 
@@ -500,6 +542,7 @@ export const render = (state) => (
     <TopProcs />
     <DiskSpace />
     <Network />
+    <Wifi />
     <DebugInfo />
   </div>
 );
