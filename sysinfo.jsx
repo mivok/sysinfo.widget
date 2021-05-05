@@ -497,7 +497,7 @@ const Wifi = () => {
   });
 
   let wifiInfoFormatted;
-  if (wifiInfo['Airport'] == 'Off') {
+  if (wifiInfo['AirPort'] == 'Off') {
     wifiInfoFormatted = <><dt>Wifi</dt><dd>Off</dd></>
   } else {
     wifiInfoFormatted = <>
