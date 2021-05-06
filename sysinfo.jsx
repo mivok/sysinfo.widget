@@ -4,6 +4,7 @@ import { React, run, css, styled } from "uebersicht";
 // would in normal react, but just set variables instead
 const useState = React.useState;
 const useEffect = React.useEffect;
+const useRef = React.useRef;
 
 // Configuration
 const module_config = {
@@ -222,7 +223,7 @@ const TopProcsTable = styled.table({
   },
 });
 
-const KVList = styled.dl(({wide}) => ({
+const KVListStyle = (wide) => css({
   margin: 0,
   '& dt': {
     float: 'left',
@@ -240,7 +241,7 @@ const KVList = styled.dl(({wide}) => ({
     clear: 'both',
     content: '""',
   }
-}));
+});
 
 /*
     .error
@@ -267,6 +268,20 @@ const Module = ({title, icon, children}) => {
   );
 }
 
+const KVList = ({wide, items, children}) => {
+  // Wrapped Definition list. You can pass a map in as the items prop, or you
+  // can just provide children directly, or both (children will be after the
+  // provided items)
+  const renderedItems = Object.keys(items || {}).map(
+    (k) => <><dt key={k}>{k}</dt><dd>{items[k]}</dd></>
+  );
+  return(
+    <dl className={KVListStyle(wide)}>
+      {renderedItems}
+      {children}
+    </dl>
+  );
+};
 
 //
 // Module code
@@ -496,24 +511,22 @@ const Wifi = () => {
     setWifiInfo(newWifiInfo);
   });
 
-  let wifiInfoFormatted;
+  let wifiItems;
   if (wifiInfo['AirPort'] == 'Off') {
-    wifiInfoFormatted = <><dt>Wifi</dt><dd>Off</dd></>
+    wifiItems = {"Wifi": "Off"}
   } else {
-    wifiInfoFormatted = <>
-        <dt>BSSID</dt><dd>{wifiInfo['BSSID']}</dd>
-        <dt>Speed</dt><dd>{wifiInfo['lastTxRate']}Mbps /
-        {wifiInfo['maxRate']}Mbps</dd>
-        <dt>SNR</dt><dd>{wifiInfo['SNR']}dB</dd>
-        <dt>Channel</dt><dd>{wifiInfo['channel']}</dd>
-      </>
+    wifiItems = {
+      BSSID: wifiInfo['BSSID'],
+      Speed: `${wifiInfo['lastTxRate']}Mbps /
+        ${wifiInfo['maxRate']}Mbps`,
+      SNR: `${wifiInfo['SNR']}dB`,
+      Channel: wifiInfo['channel']
+    }
   }
 
   return(
     <Module title="Wifi" icon="wifi">
-      <KVList>
-        {wifiInfoFormatted}
-      </KVList>
+      <KVList items={wifiItems} />
     </Module>
   );
 }
@@ -533,6 +546,60 @@ const DebugInfo = () => {
   );
 }
 
+const Bandwidth = () => {
+  const [bandwidth, setBandwidth] = useState({});
+  const oldTraffic = useRef(null);
+
+  useTimedCommand(2000, "netstat -inb", (output) => {
+    const newTraffic = {
+      timestamp: Date.now(),
+      traffic: {}
+    }
+
+    for (const line of output.split("\n").slice(1)) {
+      const parts = line.split(/\s+/)
+      if (!parts[0]) {
+        continue;
+      }
+      if (newTraffic["traffic"][parts[0]]) {
+        // netstat -ib duplicates lines for each interface (showing
+        // different IPs), so we only need one of each.
+        continue
+      }
+      if (parts[0] == 'lo0') {
+        // Skip localhost
+        continue
+      }
+      newTraffic["traffic"][parts[0]] = [parts[6], parts[9]]
+    }
+
+    if (oldTraffic.current !== null) {
+      const newBandwidth = {}
+      const timeDiff = (newTraffic['timestamp'] - oldTraffic.current['timestamp'])
+
+      for (const k of Object.keys(oldTraffic.current['traffic']).sort()) {
+        const oldv = oldTraffic.current['traffic'][k];
+        const newv = newTraffic['traffic'][k] || [0,0];
+        const bytes_in_raw  = ((parseInt(newv[0], 10) - parseInt(oldv[0], 10)) * 1000) / timeDiff;
+        const bytes_out_raw = ((parseInt(newv[1], 10) - parseInt(oldv[1], 10)) * 1000) / timeDiff;
+        const bytes_in = humanize(bytes_in_raw);
+        const bytes_out = humanize(bytes_out_raw);
+        if (bytes_in_raw > 0 || bytes_out_raw > 0) {
+          newBandwidth[k] = `IN: ${bytes_in}Bps / OUT: ${bytes_out}Bps`;
+        }
+      }
+      setBandwidth(newBandwidth)
+    }
+    oldTraffic.current = newTraffic;
+  });
+
+  return(
+    <Module title="Bandwidth" icon="download">
+      <KVList items={bandwidth} />
+    </Module>
+  );
+}
+
 // Main render function - add modules here
 export const render = (state) => (
   <div>
@@ -543,6 +610,7 @@ export const render = (state) => (
     <DiskSpace />
     <Network />
     <Wifi />
+    <Bandwidth />
     <DebugInfo />
   </div>
 );
