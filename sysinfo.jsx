@@ -243,15 +243,9 @@ const KVListStyle = (wide) => css({
   }
 });
 
-/*
-    .error
-        color: 'red',
-
-    ul.blank
-        listStyle: 'none',
-        margin: 0,
-        padding: 0,
-*/
+const ErrorStyle = css({
+  color: 'red',
+})
 
 //
 // Generic components
@@ -306,7 +300,6 @@ const CpuMemory = () => {
     const [compressed, setCompressed] = useState(0);
     const [cached, setCached] = useState(0);
     const [free, setFree] = useState(0);
-
 
     useTimedCommand(2000, 'ps -A -o %cpu', (output) => {
         // Total CPU
@@ -531,21 +524,6 @@ const Wifi = () => {
   );
 }
 
-const DebugInfo = () => {
-  const [timerCount, setTimerCount] = useState();
-
-  useRecurringTimer(1000, () => {
-    setTimerCount(TimerCount);
-  })
-  return(
-    <Module title="Debug" icon="bug">
-      <KVList>
-        <dt>Timers:</dt><dd>{timerCount}</dd>
-      </KVList>
-    </Module>
-  );
-}
-
 const Bandwidth = () => {
   const [bandwidth, setBandwidth] = useState({});
   const oldTraffic = useRef(null);
@@ -600,6 +578,112 @@ const Bandwidth = () => {
   );
 }
 
+const Ping = () => {
+  const defaultRoute = useRef();
+  const pingConfig = module_config.ping;
+  // List of state hooks
+  const pingTimes = {}
+  const pingTimeouts = {}
+  pingConfig.hosts.concat(pingConfig.additional_home_hosts).map((host) => {
+    const [value, set] = useState("-");
+    pingTimes[host] = {value, set};
+    pingTimeouts[host] = useRef(0);
+  })
+
+  // Get (and keep up to date) the default route
+  useTimedCommand(10000, "netstat -nr", (output) => {
+    for (const line of output.split("\n")) {
+      const m = line.match(/^default\s+([0-9.]+)/);
+      if (m) {
+        defaultRoute.current = m[1]
+      }
+    }
+  });
+
+  useRecurringTimer(5000, () => {
+    let ping_hosts = pingConfig.hosts;
+    if (defaultRoute.current == pingConfig.home_router) {
+      ping_hosts = ping_hosts.concat(pingConfig.additional_home_hosts)
+    }
+
+    ping_hosts.map((host) => {
+      // Replace "default_route" with the actual default route if it's present
+      const realHost = host == "default_route" ? defaultRoute.current : host;
+      if (host === "default_route" && realHost === undefined) {
+        // We don't know the default route yet, just skip it
+        return
+      }
+      run(`ping -n -c 1 -W 1 ${realHost}`).then(output => {
+        if (output ) {
+          const m = output.match(/^round-trip \S+ = ([^/]+)/m);
+          if (m) {
+            pingTimes[host].set(`${m[1]}ms`)
+            pingTimeouts[host].current = 0;
+          } else if (output.includes("0 packets received")) {
+            if (pingTimeouts[host].current > 5) {
+              // If there have been many timeouts, e.g. you have a default route
+              // that doesn't respond to pings, don't keep on printing TIMEOUT
+              // in red. Make it a smaller timeout instead.
+              pingTimes[host].set("timeout");
+            } else {
+              pingTimeouts[host].current++;
+              pingTimes[host].set("TIMEOUT")
+            }
+          } else {
+            // We didn't error out (e.g. due to a timeout), but couldn't match
+            // the expected output of ping. Just print UNKNOWN for now.
+            pingTimes[host].set("UNKNOWN")
+          }
+        }
+      }).catch((err) => {
+        // Some other error happened, print it out
+        pingTimes[host].set("ERROR")
+      })
+    });
+  })
+
+  let ping_hosts = pingConfig.hosts;
+  if (defaultRoute.current == pingConfig.home_router) {
+    ping_hosts = ping_hosts.concat(pingConfig.additional_home_hosts)
+  }
+  const pingItems = ping_hosts.map((host) => {
+    const realHost = host == "default_route" ? defaultRoute.current : host;
+    let className = "";
+    if (pingTimes[host].value == 'TIMEOUT') {
+      className = ErrorStyle;
+    }
+    return(
+      <>
+        <dt key={realHost}>{realHost}</dt>
+        <dd className={className}>{pingTimes[host].value}</dd>
+      </>
+    );
+  });
+
+  return(
+    <Module title="Ping" icon="industry">
+      <KVList wide>
+        {pingItems}
+      </KVList>
+    </Module>
+  );
+}
+
+const DebugInfo = () => {
+  const [timerCount, setTimerCount] = useState();
+
+  useRecurringTimer(1000, () => {
+    setTimerCount(TimerCount);
+  })
+  return(
+    <Module title="Debug" icon="bug">
+      <KVList>
+        <dt>Timers:</dt><dd>{timerCount}</dd>
+      </KVList>
+    </Module>
+  );
+}
+
 // Main render function - add modules here
 export const render = (state) => (
   <div>
@@ -611,6 +695,6 @@ export const render = (state) => (
     <Network />
     <Wifi />
     <Bandwidth />
-    <DebugInfo />
+    <Ping />
   </div>
 );
