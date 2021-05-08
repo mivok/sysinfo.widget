@@ -277,6 +277,15 @@ const KVList = ({wide, items, children}) => {
   );
 };
 
+const GenericList = ({items, children}) => (
+  // Wrapped UL. Similar to KVList you can pass in an items prop or just li
+  // items as children, or both.
+  <ul className={css(`list-style: none; margin: 0; padding: 0`)}>
+    {(items || []).map((i) => <li>{i}</li>)}
+    {children}
+  </ul>
+);
+
 //
 // Module code
 //
@@ -669,6 +678,35 @@ const Ping = () => {
   );
 }
 
+const RunningVMs = () => {
+  const [runningVMs, setRunningVMs] = useState();
+
+  useTimedCommand(10000, '/usr/local/bin/VBoxManage list runningvms',
+    (output) => {
+      const currentRunningVMs = [];
+      for (const line of output.split("\n")) {
+        const m = line.match(/"([^"]+)"/);
+        if (m) {
+          let vmname = m[1];
+          // Detect vagrant machine names and prettify them
+          const vagrantmatch = vmname.match(/^(.+?)_([^_]+)_[0-9_]+$/);
+          if (vagrantmatch) {
+            vmname = `${vagrantmatch[1]} (${vagrantmatch[2]})`;
+          }
+          currentRunningVMs.push(`vbox - ${vmname}`);
+        }
+      }
+      setRunningVMs(currentRunningVMs);
+    }
+  );
+
+  return(
+    <Module title="Running VMs" icon="server">
+      <GenericList items={runningVMs} />
+    </Module>
+  );
+}
+
 const DebugInfo = () => {
   const [timerCount, setTimerCount] = useState();
 
@@ -696,5 +734,6 @@ export const render = (state) => (
     <Wifi />
     <Bandwidth />
     <Ping />
+    <RunningVMs />
   </div>
 );
