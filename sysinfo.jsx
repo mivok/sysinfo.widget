@@ -251,6 +251,11 @@ const ErrorStyle = css({
 // Generic components
 //
 
+// This loads the fontawesome CSS needed for icons
+const FontAwesome = () => (
+  <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.15.3/css/all.css">
+);
+
 const Icon = ({name}) => <i className={`fa fa-${name}`}></i>;
 
 const Module = ({title, icon, children}) => {
@@ -425,7 +430,7 @@ const DiskSpace = () => {
   });
 
   return(
-    <Module title="Disk Space" icon="hdd-o">
+    <Module title="Disk Space" icon="hdd">
       <table className={SimpleTable}>
         <tbody>
           <tr>
@@ -724,16 +729,19 @@ const DebugInfo = () => {
 
 // Main render function - add modules here
 export const render = (state) => (
-  <div>
-    <Background />
-    <Hostname />
-    <CpuMemory />
-    <TopProcs />
-    <DiskSpace />
-    <Network />
-    <Wifi />
-    <Bandwidth />
-    <Ping />
-    <RunningVMs />
-  </div>
+  <>
+    <FontAwesome />
+    <div>
+      <Background />
+      <Hostname />
+      <CpuMemory />
+      <TopProcs />
+      <DiskSpace />
+      <Network />
+      <Wifi />
+      <Bandwidth />
+      <Ping />
+      <RunningVMs />
+    </div>
+  </>
 );
