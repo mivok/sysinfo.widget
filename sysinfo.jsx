@@ -9,7 +9,7 @@ const { useEffect } = React;
 const { useRef } = React;
 
 // Configuration
-const module_config = {
+const moduleConfig = {
   ping: {
     // Which hosts to ping
     hosts: [
@@ -37,14 +37,14 @@ let TimerCount = 0;
 const useRecurringTimer = (interval, callback) => {
   useEffect(() => {
     const timer = setInterval(callback, interval);
-    TimerCount++;
+    TimerCount += 1;
     // Run the first iteration immediately
     callback();
 
     // Cancel the recurring timer when cleaning up
     return () => {
       clearInterval(timer);
-      TimerCount--;
+      TimerCount -= 1;
     };
   }, []);
 };
@@ -59,10 +59,11 @@ const useTimedCommand = (interval, command, callback) => {
 const humanize = (value) => {
   // Convert a value to human readable numbers (e.g. 1024 -> 1k)
   const suffixes = 'kMGT';
+  let currentValue = value;
   let idx = -1;
   let suffix = '';
-  while (value >= 1024) {
-    value /= 1024.0;
+  while (currentValue >= 1024) {
+    currentValue /= 1024.0;
     idx += 1;
   }
   if (idx >= 0) {
@@ -72,10 +73,10 @@ const humanize = (value) => {
   // toPrecision does significant figures, but values >1000 turn into
   // scientific notation, and we don't need to worry about precision there,
   // so just print the value as is with no decimals.
-  if (value >= 1000) {
-    return `${value.toFixed(0)}${suffix}`;
+  if (currentValue >= 1000) {
+    return `${currentValue.toFixed(0)}${suffix}`;
   }
-  return `${value.toPrecision(3)}${suffix}`;
+  return `${currentValue.toPrecision(3)}${suffix}`;
 };
 
 //
@@ -186,6 +187,8 @@ const Segment = styled.div(
         return { backgroundColor: '#855047bb' };
       case 'e':
         return { backgroundColor: '#633c36bb' };
+      default:
+        return { backgroundColor: '#cccb' };
     }
   },
 );
@@ -332,22 +335,22 @@ const CpuMemory = () => {
 
   useTimedCommand(2000, 'vm_stat', (output) => {
     const stats = {};
-    let page_size = 0;
+    let pageSize = 0;
 
-    for (const line of output.split('\n')) {
+    output.split('\n').forEach((line) => {
       let m = line.match(/page size of (\d+) bytes/);
       if (m) {
-        page_size = parseInt(m[1]);
-        continue;
-      }
-      m = line.match(/^(.*):\s+(\d+)\.$/);
-      if (m) {
-        stats[m[1]] = parseInt(m[2]);
-        if (m[1].match(/[Pp]ages/)) {
-          stats[m[1]] *= page_size;
+        pageSize = parseInt(m[1], 10);
+      } else {
+        m = line.match(/^(.*):\s+(\d+)\.$/);
+        if (m) {
+          stats[m[1]] = parseInt(m[2], 10);
+          if (m[1].match(/[Pp]ages/)) {
+            stats[m[1]] *= pageSize;
+          }
         }
       }
-    }
+    });
 
     setActive(stats['Pages active']);
     setWired(stats['Pages wired down']);
@@ -407,11 +410,11 @@ const CpuMemory = () => {
         </tbody>
       </table>
       <Bar>
-        <Segment color="a" width={(active + wired + speculative + compressed + cached) / totalMem * 100} />
-        <Segment color="b" width={(active + wired + speculative + compressed) / totalMem * 100} />
-        <Segment color="c" width={(active + wired + speculative) / totalMem * 100} />
-        <Segment color="d" width={(active + wired) / totalMem * 100} />
-        <Segment color="e" width={active / totalMem * 100} />
+        <Segment color="a" width={((active + wired + speculative + compressed + cached) / totalMem) * 100} />
+        <Segment color="b" width={((active + wired + speculative + compressed) / totalMem) * 100} />
+        <Segment color="c" width={((active + wired + speculative) / totalMem) * 100} />
+        <Segment color="d" width={((active + wired) / totalMem) * 100} />
+        <Segment color="e" width={(active / totalMem) * 100} />
       </Bar>
     </Module>
   );
@@ -454,14 +457,14 @@ const DiskSpace = () => {
   useTimedCommand(10000, 'df -k /', (output) => {
     const lines = output.split('\n');
     const lastline = lines[lines.length - 2];
-    const [_fs, total, _used, free] = lastline.split(/\s+/);
+    const [, newTotal, , newFree] = lastline.split(/\s+/);
 
-    setTotal(total);
+    setTotal(newTotal);
     // We don't use the used column from df here as it only gives us the used
     // space on the current filesystem. This gets us the used space on the
     // entire disk.
-    setUsed(total - free);
-    setFree(free);
+    setUsed(newTotal - newFree);
+    setFree(newFree);
   });
 
   return (
@@ -485,13 +488,13 @@ const DiskSpace = () => {
               B
             </td>
             <td>
-              {parseInt(100 * used / total)}
+              {parseInt((100 * used) / total, 10)}
               %
             </td>
           </tr>
         </tbody>
       </table>
-      <Bar><Segment color="auto" width={used / total * 100} /></Bar>
+      <Bar><Segment color="auto" width={(100 * used) / total} /></Bar>
     </Module>
   );
 };
@@ -501,31 +504,30 @@ const Network = () => {
   const [nameservers, setNameservers] = useState([]);
 
   useTimedCommand(10000, 'ifconfig -a', (output) => {
-    const lines = output.split('\n');
-    const ip_info = {};
-    let cur_if = '';
-    for (const line of lines) {
+    const ipInfo = {};
+    let curIf = '';
+    output.split('\n').forEach((line) => {
       // Interface name
-      const ifMatch = line.match(/^([a-z0-9]+):/);
+      const ifMatch = line.match(/^(?<ifName>[a-z0-9]+):/);
       if (ifMatch) {
-        cur_if = ifMatch[1];
-        ip_info[cur_if] = [];
-        continue;
+        curIf = ifMatch.groups.ifName;
+        ipInfo[curIf] = [];
+      } else {
+        // Ip address
+        const ipMatch = line.match(/^\s+inet6? ([0-9a-f.:]+)/);
+        if (ipMatch && !/^(fe80|fd00)/.test(ipMatch[1])) {
+          ipInfo[curIf].push(ipMatch[1]);
+        }
       }
-      // Ip address
-      const ipMatch = line.match(/^\s+inet6? ([0-9a-f.:]+)/);
-      if (ipMatch && !/^(fe80|fd00)/.test(ipMatch[1])) {
-        ip_info[cur_if].push(ipMatch[1]);
-      }
-    }
-    setInterfaces(Object.fromEntries(Object.entries(ip_info).filter(
-      ([iface, ips]) => (iface != 'lo0' && ips.length > 0),
+    });
+    setInterfaces(Object.fromEntries(Object.entries(ipInfo).filter(
+      ([iface, ips]) => (iface !== 'lo0' && ips.length > 0),
     )));
   });
 
   useTimedCommand(10000, 'cat /etc/resolv.conf', (output) => {
     const ns = [];
-    output.split('\n').map((line) => {
+    output.split('\n').forEach((line) => {
       const m = line.match(/^nameserver (\S+)/);
       if (m) {
         ns.push(m[1]);
@@ -557,23 +559,24 @@ const Wifi = () => {
 
   useTimedCommand(10000, '/System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport -I', (output) => {
     const newWifiInfo = {};
-    for (const line of output.split('\n')) {
-      const m = line.match(/^\s*(\S+): (.*)/);
+    output.split('\n').forEach((line) => {
+      const m = line.match(/^\s*(?<key>\S+): (?<value>.*)/);
       if (m) {
-        newWifiInfo[m[1]] = m[2];
+        newWifiInfo[m.groups.key] = m.groups.value;
       }
-    }
+    });
 
     // Show SNR value
     if (newWifiInfo.agrCtlRSSI) {
-      newWifiInfo.SNR = parseInt(newWifiInfo.agrCtlRSSI) - parseInt(newWifiInfo.agrCtlNoise);
+      newWifiInfo.SNR = parseInt(newWifiInfo.agrCtlRSSI, 10)
+        - parseInt(newWifiInfo.agrCtlNoise, 10);
     }
 
     setWifiInfo(newWifiInfo);
   });
 
   let wifiItems;
-  if (wifiInfo.AirPort == 'Off') {
+  if (wifiInfo.AirPort === 'Off') {
     wifiItems = { Wifi: 'Off' };
   } else {
     wifiItems = {
@@ -603,38 +606,33 @@ const Bandwidth = () => {
       traffic: {},
     };
 
-    for (const line of output.split('\n').slice(1)) {
+    output.split('\n').slice(1).forEach((line) => {
       const parts = line.split(/\s+/);
-      if (!parts[0]) {
-        continue;
+      if (parts[0]
+          // netstat -ib duplicates lines for each interface (showing
+          // different IPs), so we only need one of each.
+          && !newTraffic.traffic[parts[0]]
+          // Skip localhost
+          && parts[0] !== 'lo0') {
+        newTraffic.traffic[parts[0]] = [parts[6], parts[9]];
       }
-      if (newTraffic.traffic[parts[0]]) {
-        // netstat -ib duplicates lines for each interface (showing
-        // different IPs), so we only need one of each.
-        continue;
-      }
-      if (parts[0] == 'lo0') {
-        // Skip localhost
-        continue;
-      }
-      newTraffic.traffic[parts[0]] = [parts[6], parts[9]];
-    }
+    });
 
     if (oldTraffic.current !== null) {
       const newBandwidth = {};
       const timeDiff = (newTraffic.timestamp - oldTraffic.current.timestamp);
 
-      for (const k of Object.keys(oldTraffic.current.traffic).sort()) {
+      Object.keys(oldTraffic.current.traffic).sort().forEach((k) => {
         const oldv = oldTraffic.current.traffic[k];
         const newv = newTraffic.traffic[k] || [0, 0];
-        const bytes_in_raw = ((parseInt(newv[0], 10) - parseInt(oldv[0], 10)) * 1000) / timeDiff;
-        const bytes_out_raw = ((parseInt(newv[1], 10) - parseInt(oldv[1], 10)) * 1000) / timeDiff;
-        const bytes_in = humanize(bytes_in_raw);
-        const bytes_out = humanize(bytes_out_raw);
-        if (bytes_in_raw > 0 || bytes_out_raw > 0) {
-          newBandwidth[k] = `IN: ${bytes_in}Bps / OUT: ${bytes_out}Bps`;
+        const bytesInRaw = ((parseInt(newv[0], 10) - parseInt(oldv[0], 10)) * 1000) / timeDiff;
+        const bytesOutRaw = ((parseInt(newv[1], 10) - parseInt(oldv[1], 10)) * 1000) / timeDiff;
+        const bytesIn = humanize(bytesInRaw);
+        const bytesOut = humanize(bytesOutRaw);
+        if (bytesInRaw > 0 || bytesOutRaw > 0) {
+          newBandwidth[k] = `IN: ${bytesIn}Bps / OUT: ${bytesOut}Bps`;
         }
-      }
+      });
       setBandwidth(newBandwidth);
     }
     oldTraffic.current = newTraffic;
@@ -649,11 +647,11 @@ const Bandwidth = () => {
 
 const Ping = () => {
   const defaultRoute = useRef();
-  const pingConfig = module_config.ping;
+  const pingConfig = moduleConfig.ping;
   // List of state hooks
   const pingTimes = {};
   const pingTimeouts = {};
-  pingConfig.hosts.concat(pingConfig.additional_home_hosts).map((host) => {
+  pingConfig.hosts.concat(pingConfig.additional_home_hosts).forEach((host) => {
     const [value, set] = useState('-');
     pingTimes[host] = { value, set };
     pingTimeouts[host] = useRef(0);
@@ -661,23 +659,23 @@ const Ping = () => {
 
   // Get (and keep up to date) the default route
   useTimedCommand(10000, 'netstat -nr', (output) => {
-    for (const line of output.split('\n')) {
-      const m = line.match(/^default\s+([0-9.]+)/);
+    output.split('\n').forEach((line) => {
+      const m = line.match(/^default\s+(?<ip>[0-9.]+)/);
       if (m) {
-        defaultRoute.current = m[1];
+        defaultRoute.current = m.groups.ip;
       }
-    }
+    });
   });
 
   useRecurringTimer(5000, () => {
-    let ping_hosts = pingConfig.hosts;
-    if (defaultRoute.current == pingConfig.home_router) {
-      ping_hosts = ping_hosts.concat(pingConfig.additional_home_hosts);
+    let pingHosts = pingConfig.hosts;
+    if (defaultRoute.current === pingConfig.home_router) {
+      pingHosts = pingHosts.concat(pingConfig.additional_home_hosts);
     }
 
-    ping_hosts.map((host) => {
+    pingHosts.forEach((host) => {
       // Replace "default_route" with the actual default route if it's present
-      const realHost = host == 'default_route' ? defaultRoute.current : host;
+      const realHost = host === 'default_route' ? defaultRoute.current : host;
       if (host === 'default_route' && realHost === undefined) {
         // We don't know the default route yet, just skip it
         return;
@@ -695,7 +693,7 @@ const Ping = () => {
               // in red. Make it a smaller timeout instead.
               pingTimes[host].set('timeout');
             } else {
-              pingTimeouts[host].current++;
+              pingTimeouts[host].current += 1;
               pingTimes[host].set('TIMEOUT');
             }
           } else {
@@ -704,27 +702,27 @@ const Ping = () => {
             pingTimes[host].set('UNKNOWN');
           }
         }
-      }).catch((err) => {
+      }).catch(() => {
         // Some other error happened, print it out
         pingTimes[host].set('ERROR');
       });
     });
   });
 
-  let ping_hosts = pingConfig.hosts;
-  if (defaultRoute.current == pingConfig.home_router) {
-    ping_hosts = ping_hosts.concat(pingConfig.additional_home_hosts);
+  let pingHosts = pingConfig.hosts;
+  if (defaultRoute.current === pingConfig.home_router) {
+    pingHosts = pingHosts.concat(pingConfig.additional_home_hosts);
   }
-  const pingItems = ping_hosts.map((host) => {
-    const realHost = host == 'default_route' ? defaultRoute.current : host;
-    let className = '';
-    if (pingTimes[host].value == 'TIMEOUT') {
-      className = ErrorStyle;
+  const pingItems = pingHosts.map((host) => {
+    const realHost = host === 'default_route' ? defaultRoute.current : host;
+    let pingClassName = '';
+    if (pingTimes[host].value === 'TIMEOUT') {
+      pingClassName = ErrorStyle;
     }
     return (
       <>
         <dt key={realHost}>{realHost}</dt>
-        <dd className={className}>{pingTimes[host].value}</dd>
+        <dd className={pingClassName}>{pingTimes[host].value}</dd>
       </>
     );
   });
@@ -744,7 +742,7 @@ const RunningVMs = () => {
   useTimedCommand(10000, '/usr/local/bin/VBoxManage list runningvms',
     (output) => {
       const currentRunningVMs = [];
-      for (const line of output.split('\n')) {
+      output.split('\n').forEach((line) => {
         const m = line.match(/"([^"]+)"/);
         if (m) {
           let vmname = m[1];
@@ -755,7 +753,7 @@ const RunningVMs = () => {
           }
           currentRunningVMs.push(`vbox - ${vmname}`);
         }
-      }
+      });
       setRunningVMs(currentRunningVMs);
     });
 
@@ -766,6 +764,7 @@ const RunningVMs = () => {
   );
 };
 
+// eslint-disable-next-line no-unused-vars
 const DebugInfo = () => {
   const [timerCount, setTimerCount] = useState();
 
@@ -783,7 +782,7 @@ const DebugInfo = () => {
 };
 
 // Main render function - add modules here
-export const render = (state) => (
+export const render = () => (
   <>
     <FontAwesome />
     <div>
