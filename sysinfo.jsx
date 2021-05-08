@@ -1,27 +1,29 @@
-import { React, run, css, styled } from "uebersicht";
+import {
+  React, run, css, styled,
+} from 'uebersicht';
 
 // React hooks are part of the React object, so we don't import them like we
 // would in normal react, but just set variables instead
-const useState = React.useState;
-const useEffect = React.useEffect;
-const useRef = React.useRef;
+const { useState } = React;
+const { useEffect } = React;
+const { useRef } = React;
 
 // Configuration
 const module_config = {
-  "ping": {
+  ping: {
     // Which hosts to ping
-    "hosts": [
-      "default_route",
-      "8.8.8.8",
-      "www.verizon.com"
+    hosts: [
+      'default_route',
+      '8.8.8.8',
+      'www.verizon.com',
     ],
     // Additional hosts to ping if at home
     // If your default route matches this, then ping additional hosts at
     // home
-    home_router: "192.168.1.1",
-    additional_home_hosts: ["192.168.1.3"],
-  }
-}
+    home_router: '192.168.1.1',
+    additional_home_hosts: ['192.168.1.3'],
+  },
+};
 
 //
 // Helper functions
@@ -33,49 +35,48 @@ let TimerCount = 0;
 // Wrapper around recurringTimer for use as a react hook (use this for setting
 // a recurring timer inside a functional react component)
 const useRecurringTimer = (interval, callback) => {
-    useEffect(() => {
-      const timer = setInterval(callback, interval);
-      TimerCount++;
-      // Run the first iteration immediately
-      callback();
+  useEffect(() => {
+    const timer = setInterval(callback, interval);
+    TimerCount++;
+    // Run the first iteration immediately
+    callback();
 
-      // Cancel the recurring timer when cleaning up
-      return () => {
-        clearInterval(timer);
-        TimerCount--;
-      }
-    }, []);
-}
+    // Cancel the recurring timer when cleaning up
+    return () => {
+      clearInterval(timer);
+      TimerCount--;
+    };
+  }, []);
+};
 
 // Wrapper around useRecurringTimer for running a command at regular intervals
 // and doing something with the output
 const useTimedCommand = (interval, command, callback) => {
-    useRecurringTimer(interval, () => run(command).then(callback));
-}
+  useRecurringTimer(interval, () => run(command).then(callback));
+};
 
 // Turns a size into human units (e.g. 1000 = 1k)
 const humanize = (value) => {
-    // Convert a value to human readable numbers (e.g. 1024 -> 1k)
-    const suffixes = "kMGT";
-    let idx = -1;
-    let suffix = "";
-    while (value >= 1024) {
-        value = value / 1024.0;
-        idx += 1;
-    }
-    if (idx >= 0) {
-        suffix = suffixes[idx];
-    }
+  // Convert a value to human readable numbers (e.g. 1024 -> 1k)
+  const suffixes = 'kMGT';
+  let idx = -1;
+  let suffix = '';
+  while (value >= 1024) {
+    value /= 1024.0;
+    idx += 1;
+  }
+  if (idx >= 0) {
+    suffix = suffixes[idx];
+  }
 
-    // toPrecision does significant figures, but values >1000 turn into
-    // scientific notation, and we don't need to worry about precision there,
-    // so just print the value as is with no decimals.
-    if (value >= 1000) {
-        return `${value.toFixed(0)}${suffix}`;
-    } else {
-        return `${value.toPrecision(3)}${suffix}`;
-    }
-}
+  // toPrecision does significant figures, but values >1000 turn into
+  // scientific notation, and we don't need to worry about precision there,
+  // so just print the value as is with no decimals.
+  if (value >= 1000) {
+    return `${value.toFixed(0)}${suffix}`;
+  }
+  return `${value.toPrecision(3)}${suffix}`;
+};
 
 //
 // Styles
@@ -96,7 +97,7 @@ export const className = {
   right: 0,
   top: 0,
   height: '100%',
-}
+};
 
 const Background = styled.div({
   background: 'rgba(0, 0, 0, 0.50)',
@@ -152,39 +153,39 @@ const Segment = styled.div(
     borderRadius: '4px',
     position: 'absolute',
   },
-  ({width}) => ({
+  ({ width }) => ({
     width: `${width}%`,
   }),
-  ({color, width}) => {
+  ({ color, width }) => {
     switch (color) {
       case 'auto':
         // Audo sets the color to green/yellow/red based on a threshold
         if (width > 80) {
           // Red
-          return {backgroundColor: '#d66b'}
-        } else if (width > 60) {
+          return { backgroundColor: '#d66b' };
+        } if (width > 60) {
           // Yellow
-          return {backgroundColor: '#dd6b'}
-        } else {
-          // Green
-          return {backgroundColor: '#6d6b'}
+          return { backgroundColor: '#dd6b' };
         }
+        // Green
+        return { backgroundColor: '#6d6b' };
+
       case 'red':
-        return {backgroundColor: '#d66b'}
+        return { backgroundColor: '#d66b' };
       case 'green':
-        return {backgroundColor: '#6d6b'}
+        return { backgroundColor: '#6d6b' };
       case 'yellow':
-        return {backgroundColor: '#dd6b'}
+        return { backgroundColor: '#dd6b' };
       case 'a':
-        return {backgroundColor: '#009bb3bb'}
+        return { backgroundColor: '#009bb3bb' };
       case 'b':
-        return {backgroundColor: '#008599bb'}
+        return { backgroundColor: '#008599bb' };
       case 'c':
-        return {backgroundColor: '#006380bb'}
+        return { backgroundColor: '#006380bb' };
       case 'd':
-        return {backgroundColor: '#855047bb'}
+        return { backgroundColor: '#855047bb' };
       case 'e':
-        return {backgroundColor: '#633c36bb'}
+        return { backgroundColor: '#633c36bb' };
     }
   },
 );
@@ -200,8 +201,8 @@ const SimpleTable = css({
     paddingBottom: 0,
     margin: 0,
     textAlign: 'center',
-  }
-})
+  },
+});
 
 const TopProcsTable = styled.table({
   borderSpacing: 0,
@@ -234,18 +235,18 @@ const KVListStyle = (wide) => css({
   '& dd': {
     float: 'left',
     margin: 0,
-    width: wide ? '50%': '75%',
+    width: wide ? '50%' : '75%',
   },
   '&:after': {
     display: 'block',
     clear: 'both',
     content: '""',
-  }
+  },
 });
 
 const ErrorStyle = css({
   color: 'red',
-})
+});
 
 //
 // Generic components
@@ -256,25 +257,32 @@ const FontAwesome = () => (
   <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.15.3/css/all.css" />
 );
 
-const Icon = ({name}) => <i className={`fa fa-${name}`}></i>;
+const Icon = ({ name }) => <i className={`fa fa-${name}`} />;
 
-const Module = ({title, icon, children}) => {
-  return(
-    <div>
-      <ModuleTitle><Icon name={icon} /> {title}</ModuleTitle>
-      {children}
-    </div>
-  );
-}
+const Module = ({ title, icon, children }) => (
+  <div>
+    <ModuleTitle>
+      <Icon name={icon} />
+      {' '}
+      {title}
+    </ModuleTitle>
+    {children}
+  </div>
+);
 
-const KVList = ({wide, items, children}) => {
+const KVList = ({ wide, items, children }) => {
   // Wrapped Definition list. You can pass a map in as the items prop, or you
   // can just provide children directly, or both (children will be after the
   // provided items)
   const renderedItems = Object.keys(items || {}).map(
-    (k) => <><dt key={k}>{k}</dt><dd>{items[k]}</dd></>
+    (k) => (
+      <>
+        <dt key={k}>{k}</dt>
+        <dd>{items[k]}</dd>
+      </>
+    ),
   );
-  return(
+  return (
     <dl className={KVListStyle(wide)}>
       {renderedItems}
       {children}
@@ -282,10 +290,10 @@ const KVList = ({wide, items, children}) => {
   );
 };
 
-const GenericList = ({items, children}) => (
+const GenericList = ({ items, children }) => (
   // Wrapped UL. Similar to KVList you can pass in an items prop or just li
   // items as children, or both.
-  <ul className={css(`list-style: none; margin: 0; padding: 0`)}>
+  <ul className={css('list-style: none; margin: 0; padding: 0')}>
     {(items || []).map((i) => <li>{i}</li>)}
     {children}
   </ul>
@@ -295,112 +303,139 @@ const GenericList = ({items, children}) => (
 // Module code
 //
 const Hostname = () => {
-    const [hostname, setHostname] = useState('-');
+  const [hostname, setHostname] = useState('-');
 
-    useTimedCommand(10000, 'hostname', (output) => setHostname(output));
+  useTimedCommand(10000, 'hostname', (output) => setHostname(output));
 
-    return (
-        <TopLevelHeader>{hostname}</TopLevelHeader>
-    );
+  return (
+    <TopLevelHeader>{hostname}</TopLevelHeader>
+  );
 };
 
 const CpuMemory = () => {
-    // CPU
-    const [totalUsage, setTotalUsage] = useState(0.0);
-    // Memory
-    const [active, setActive] = useState(0);
-    const [wired, setWired] = useState(0);
-    const [speculative, setSpeculative] = useState(0);
-    const [compressed, setCompressed] = useState(0);
-    const [cached, setCached] = useState(0);
-    const [free, setFree] = useState(0);
+  // CPU
+  const [totalUsage, setTotalUsage] = useState(0.0);
+  // Memory
+  const [active, setActive] = useState(0);
+  const [wired, setWired] = useState(0);
+  const [speculative, setSpeculative] = useState(0);
+  const [compressed, setCompressed] = useState(0);
+  const [cached, setCached] = useState(0);
+  const [free, setFree] = useState(0);
 
-    useTimedCommand(2000, 'ps -A -o %cpu', (output) => {
-        // Total CPU
-        setTotalUsage(output.split('\n')
-            .map((l) => parseFloat(l) || 0.0)
-            .reduce((t, n) => t + n)
-        );
-    });
+  useTimedCommand(2000, 'ps -A -o %cpu', (output) => {
+    // Total CPU
+    setTotalUsage(output.split('\n')
+      .map((l) => parseFloat(l) || 0.0)
+      .reduce((t, n) => t + n));
+  });
 
-    useTimedCommand(2000, 'vm_stat', (output) => {
-        const stats = {}
-        let page_size = 0
+  useTimedCommand(2000, 'vm_stat', (output) => {
+    const stats = {};
+    let page_size = 0;
 
-        for (const line of output.split("\n")) {
-            let m = line.match(/page size of (\d+) bytes/)
-            if (m) {
-                page_size = parseInt(m[1])
-                continue
-            }
-            m = line.match(/^(.*):\s+(\d+)\.$/)
-            if (m) {
-                stats[m[1]] = parseInt(m[2])
-                if (m[1].match(/[Pp]ages/)) {
-                    stats[m[1]] *= page_size
-                }
-            }
+    for (const line of output.split('\n')) {
+      let m = line.match(/page size of (\d+) bytes/);
+      if (m) {
+        page_size = parseInt(m[1]);
+        continue;
+      }
+      m = line.match(/^(.*):\s+(\d+)\.$/);
+      if (m) {
+        stats[m[1]] = parseInt(m[2]);
+        if (m[1].match(/[Pp]ages/)) {
+          stats[m[1]] *= page_size;
         }
+      }
+    }
 
-        setActive(stats['Pages active']);
-        setWired(stats['Pages wired down']);
-        setSpeculative(stats['Pages speculative']);
-        setCompressed(stats['Pages occupied by compressor']);
-        setCached(stats['File-backed pages']);
-        setFree(stats['Pages free']);
-    });
+    setActive(stats['Pages active']);
+    setWired(stats['Pages wired down']);
+    setSpeculative(stats['Pages speculative']);
+    setCompressed(stats['Pages occupied by compressor']);
+    setCached(stats['File-backed pages']);
+    setFree(stats['Pages free']);
+  });
 
-    // The total memory is used by the bars
-    const totalMem = active + wired + speculative + compressed + cached + free;
+  // The total memory is used by the bars
+  const totalMem = active + wired + speculative + compressed + cached + free;
 
-    return (
-        <Module title="CPU/Memory" icon="laptop">
-          <BarHeader>CPU: {totalUsage.toPrecision(3)}%</BarHeader>
-          <Bar><Segment width={Math.min(totalUsage, 100)} color="auto" /></Bar>
-          <table className={SimpleTable}>
-            <tbody>
-              <tr>
-                  <td>Ac: {humanize(active)}B</td>
-                  <td>Wi: {humanize(wired)}B</td>
-                  <td>Sp: {humanize(speculative)}B</td>
-              </tr>
-              <tr>
-                  <td>Co: {humanize(compressed)}B</td>
-                  <td>Ca: {humanize(cached)}B</td>
-                  <td>Fr: {humanize(free)}B</td>
-              </tr>
-            </tbody>
-          </table>
-          <Bar>
-              <Segment color="a" width={(active + wired + speculative + compressed + cached) / totalMem * 100} />
-              <Segment color="b" width={(active + wired + speculative + compressed) / totalMem * 100} />
-              <Segment color="c" width={(active + wired + speculative) / totalMem * 100} />
-              <Segment color="d" width={(active + wired) / totalMem * 100} />
-              <Segment color="e" width={active / totalMem * 100} />
-          </Bar>
-      </Module>
-    );
-}
+  return (
+    <Module title="CPU/Memory" icon="laptop">
+      <BarHeader>
+        CPU:
+        {totalUsage.toPrecision(3)}
+        %
+      </BarHeader>
+      <Bar><Segment width={Math.min(totalUsage, 100)} color="auto" /></Bar>
+      <table className={SimpleTable}>
+        <tbody>
+          <tr>
+            <td>
+              Ac:
+              {humanize(active)}
+              B
+            </td>
+            <td>
+              Wi:
+              {humanize(wired)}
+              B
+            </td>
+            <td>
+              Sp:
+              {humanize(speculative)}
+              B
+            </td>
+          </tr>
+          <tr>
+            <td>
+              Co:
+              {humanize(compressed)}
+              B
+            </td>
+            <td>
+              Ca:
+              {humanize(cached)}
+              B
+            </td>
+            <td>
+              Fr:
+              {humanize(free)}
+              B
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <Bar>
+        <Segment color="a" width={(active + wired + speculative + compressed + cached) / totalMem * 100} />
+        <Segment color="b" width={(active + wired + speculative + compressed) / totalMem * 100} />
+        <Segment color="c" width={(active + wired + speculative) / totalMem * 100} />
+        <Segment color="d" width={(active + wired) / totalMem * 100} />
+        <Segment color="e" width={active / totalMem * 100} />
+      </Bar>
+    </Module>
+  );
+};
 
 const TopProcs = () => {
   const [procs, setProcs] = useState([]);
 
   useTimedCommand(2000, "ps axro 'pid, %cpu, ucomm'", (output) => {
-    setProcs(output.split("\n")
-      .slice(1,6)
+    setProcs(output.split('\n')
+      .slice(1, 6)
       .map((p) => p.match(/\S+/g))
-      .map((m) => ({pid: m[0], cpu: m[1], name: m[2]})));
+      .map((m) => ({ pid: m[0], cpu: m[1], name: m[2] })));
   });
 
-  const topProcs = procs.map((p) =>
-    <tr key={p['pid']}>
-      <td>{p['pid']}</td>
-      <td>{p['cpu']}</td>
-      <td>{p['name']}</td>
+  const topProcs = procs.map((p) => (
+    <tr key={p.pid}>
+      <td>{p.pid}</td>
+      <td>{p.cpu}</td>
+      <td>{p.name}</td>
     </tr>
-  )
+  ));
 
-  return(
+  return (
     <Module title="Top Processes" icon="trophy">
       <TopProcsTable>
         <tbody>
@@ -409,15 +444,15 @@ const TopProcs = () => {
       </TopProcsTable>
     </Module>
   );
-}
+};
 
 const DiskSpace = () => {
   const [total, setTotal] = useState(1);
   const [used, setUsed] = useState(0);
   const [free, setFree] = useState(0);
 
-  useTimedCommand(10000, "df -k /", (output) => {
-    const lines = output.split("\n");
+  useTimedCommand(10000, 'df -k /', (output) => {
+    const lines = output.split('\n');
     const lastline = lines[lines.length - 2];
     const [_fs, total, _used, free] = lastline.split(/\s+/);
 
@@ -429,151 +464,170 @@ const DiskSpace = () => {
     setFree(free);
   });
 
-  return(
+  return (
     <Module title="Disk Space" icon="hdd">
       <table className={SimpleTable}>
         <tbody>
           <tr>
-            <td>U {humanize(used * 1024)}B</td>
-            <td>F {humanize(free * 1024)}B</td>
-            <td>T {humanize(total * 1024)}B</td>
-            <td>{parseInt(100 * used / total)}%</td>
+            <td>
+              U
+              {humanize(used * 1024)}
+              B
+            </td>
+            <td>
+              F
+              {humanize(free * 1024)}
+              B
+            </td>
+            <td>
+              T
+              {humanize(total * 1024)}
+              B
+            </td>
+            <td>
+              {parseInt(100 * used / total)}
+              %
+            </td>
           </tr>
         </tbody>
       </table>
       <Bar><Segment color="auto" width={used / total * 100} /></Bar>
     </Module>
   );
-}
+};
 
 const Network = () => {
   const [interfaces, setInterfaces] = useState({});
   const [nameservers, setNameservers] = useState([]);
 
-  useTimedCommand(10000, "ifconfig -a", (output) => {
-    const lines = output.split("\n");
+  useTimedCommand(10000, 'ifconfig -a', (output) => {
+    const lines = output.split('\n');
     const ip_info = {};
-    let cur_if = "";
+    let cur_if = '';
     for (const line of lines) {
       // Interface name
       const ifMatch = line.match(/^([a-z0-9]+):/);
       if (ifMatch) {
-        cur_if = ifMatch[1]
-        ip_info[cur_if] = []
-        continue
+        cur_if = ifMatch[1];
+        ip_info[cur_if] = [];
+        continue;
       }
       // Ip address
-      const ipMatch = line.match(/^\s+inet6? ([0-9a-f.:]+)/)
+      const ipMatch = line.match(/^\s+inet6? ([0-9a-f.:]+)/);
       if (ipMatch && !/^(fe80|fd00)/.test(ipMatch[1])) {
-        ip_info[cur_if].push(ipMatch[1])
+        ip_info[cur_if].push(ipMatch[1]);
       }
     }
     setInterfaces(Object.fromEntries(Object.entries(ip_info).filter(
-      ([iface, ips]) => (iface != 'lo0' && ips.length > 0)
+      ([iface, ips]) => (iface != 'lo0' && ips.length > 0),
     )));
   });
 
-  useTimedCommand(10000, "cat /etc/resolv.conf", (output) => {
-    const ns = []
-    output.split("\n").map((line) => {
+  useTimedCommand(10000, 'cat /etc/resolv.conf', (output) => {
+    const ns = [];
+    output.split('\n').map((line) => {
       const m = line.match(/^nameserver (\S+)/);
       if (m) {
         ns.push(m[1]);
       }
-    })
+    });
     setNameservers(ns);
   });
 
   const ifInfo = Object.keys(interfaces).map((ifName) => (
-    <><dt key={ifName}>{ifName}</dt><dd>{interfaces[ifName].join(", ")}</dd></>
-  ))
+    <>
+      <dt key={ifName}>{ifName}</dt>
+      <dd>{interfaces[ifName].join(', ')}</dd>
+    </>
+  ));
 
-  return(
+  return (
     <Module title="Network" icon="cloud">
       <KVList>
         {ifInfo}
-        <dt key="DNS">DNS</dt><dd>{nameservers.join(", ")}</dd>
+        <dt key="DNS">DNS</dt>
+        <dd>{nameservers.join(', ')}</dd>
       </KVList>
     </Module>
   );
-}
+};
 
 const Wifi = () => {
   const [wifiInfo, setWifiInfo] = useState({});
 
-  useTimedCommand(10000, "/System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport -I", (output) => {
-    const newWifiInfo = {}
-    for (const line of output.split("\n")) {
+  useTimedCommand(10000, '/System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport -I', (output) => {
+    const newWifiInfo = {};
+    for (const line of output.split('\n')) {
       const m = line.match(/^\s*(\S+): (.*)/);
       if (m) {
-        newWifiInfo[m[1]] = m[2]
+        newWifiInfo[m[1]] = m[2];
       }
     }
 
     // Show SNR value
-    if (newWifiInfo['agrCtlRSSI']) {
-      newWifiInfo["SNR"] = parseInt(newWifiInfo["agrCtlRSSI"]) - parseInt(newWifiInfo["agrCtlNoise"])
+    if (newWifiInfo.agrCtlRSSI) {
+      newWifiInfo.SNR = parseInt(newWifiInfo.agrCtlRSSI) - parseInt(newWifiInfo.agrCtlNoise);
     }
 
     setWifiInfo(newWifiInfo);
   });
 
   let wifiItems;
-  if (wifiInfo['AirPort'] == 'Off') {
-    wifiItems = {"Wifi": "Off"}
+  if (wifiInfo.AirPort == 'Off') {
+    wifiItems = { Wifi: 'Off' };
   } else {
     wifiItems = {
-      SSID: wifiInfo['SSID'],
-      BSSID: wifiInfo['BSSID'],
-      Speed: `${wifiInfo['lastTxRate']}Mbps /
-        ${wifiInfo['maxRate']}Mbps`,
-      SNR: `${wifiInfo['SNR']}dB`,
-      Channel: wifiInfo['channel']
-    }
+      SSID: wifiInfo.SSID,
+      BSSID: wifiInfo.BSSID,
+      Speed: `${wifiInfo.lastTxRate}Mbps /
+        ${wifiInfo.maxRate}Mbps`,
+      SNR: `${wifiInfo.SNR}dB`,
+      Channel: wifiInfo.channel,
+    };
   }
 
-  return(
+  return (
     <Module title="Wifi" icon="wifi">
       <KVList items={wifiItems} />
     </Module>
   );
-}
+};
 
 const Bandwidth = () => {
   const [bandwidth, setBandwidth] = useState({});
   const oldTraffic = useRef(null);
 
-  useTimedCommand(2000, "netstat -inb", (output) => {
+  useTimedCommand(2000, 'netstat -inb', (output) => {
     const newTraffic = {
       timestamp: Date.now(),
-      traffic: {}
-    }
+      traffic: {},
+    };
 
-    for (const line of output.split("\n").slice(1)) {
-      const parts = line.split(/\s+/)
+    for (const line of output.split('\n').slice(1)) {
+      const parts = line.split(/\s+/);
       if (!parts[0]) {
         continue;
       }
-      if (newTraffic["traffic"][parts[0]]) {
+      if (newTraffic.traffic[parts[0]]) {
         // netstat -ib duplicates lines for each interface (showing
         // different IPs), so we only need one of each.
-        continue
+        continue;
       }
       if (parts[0] == 'lo0') {
         // Skip localhost
-        continue
+        continue;
       }
-      newTraffic["traffic"][parts[0]] = [parts[6], parts[9]]
+      newTraffic.traffic[parts[0]] = [parts[6], parts[9]];
     }
 
     if (oldTraffic.current !== null) {
-      const newBandwidth = {}
-      const timeDiff = (newTraffic['timestamp'] - oldTraffic.current['timestamp'])
+      const newBandwidth = {};
+      const timeDiff = (newTraffic.timestamp - oldTraffic.current.timestamp);
 
-      for (const k of Object.keys(oldTraffic.current['traffic']).sort()) {
-        const oldv = oldTraffic.current['traffic'][k];
-        const newv = newTraffic['traffic'][k] || [0,0];
-        const bytes_in_raw  = ((parseInt(newv[0], 10) - parseInt(oldv[0], 10)) * 1000) / timeDiff;
+      for (const k of Object.keys(oldTraffic.current.traffic).sort()) {
+        const oldv = oldTraffic.current.traffic[k];
+        const newv = newTraffic.traffic[k] || [0, 0];
+        const bytes_in_raw = ((parseInt(newv[0], 10) - parseInt(oldv[0], 10)) * 1000) / timeDiff;
         const bytes_out_raw = ((parseInt(newv[1], 10) - parseInt(oldv[1], 10)) * 1000) / timeDiff;
         const bytes_in = humanize(bytes_in_raw);
         const bytes_out = humanize(bytes_out_raw);
@@ -581,36 +635,36 @@ const Bandwidth = () => {
           newBandwidth[k] = `IN: ${bytes_in}Bps / OUT: ${bytes_out}Bps`;
         }
       }
-      setBandwidth(newBandwidth)
+      setBandwidth(newBandwidth);
     }
     oldTraffic.current = newTraffic;
   });
 
-  return(
+  return (
     <Module title="Bandwidth" icon="download">
       <KVList items={bandwidth} />
     </Module>
   );
-}
+};
 
 const Ping = () => {
   const defaultRoute = useRef();
   const pingConfig = module_config.ping;
   // List of state hooks
-  const pingTimes = {}
-  const pingTimeouts = {}
+  const pingTimes = {};
+  const pingTimeouts = {};
   pingConfig.hosts.concat(pingConfig.additional_home_hosts).map((host) => {
-    const [value, set] = useState("-");
-    pingTimes[host] = {value, set};
+    const [value, set] = useState('-');
+    pingTimes[host] = { value, set };
     pingTimeouts[host] = useRef(0);
-  })
+  });
 
   // Get (and keep up to date) the default route
-  useTimedCommand(10000, "netstat -nr", (output) => {
-    for (const line of output.split("\n")) {
+  useTimedCommand(10000, 'netstat -nr', (output) => {
+    for (const line of output.split('\n')) {
       const m = line.match(/^default\s+([0-9.]+)/);
       if (m) {
-        defaultRoute.current = m[1]
+        defaultRoute.current = m[1];
       }
     }
   });
@@ -618,56 +672,56 @@ const Ping = () => {
   useRecurringTimer(5000, () => {
     let ping_hosts = pingConfig.hosts;
     if (defaultRoute.current == pingConfig.home_router) {
-      ping_hosts = ping_hosts.concat(pingConfig.additional_home_hosts)
+      ping_hosts = ping_hosts.concat(pingConfig.additional_home_hosts);
     }
 
     ping_hosts.map((host) => {
       // Replace "default_route" with the actual default route if it's present
-      const realHost = host == "default_route" ? defaultRoute.current : host;
-      if (host === "default_route" && realHost === undefined) {
+      const realHost = host == 'default_route' ? defaultRoute.current : host;
+      if (host === 'default_route' && realHost === undefined) {
         // We don't know the default route yet, just skip it
-        return
+        return;
       }
-      run(`ping -n -c 1 -W 1 ${realHost}`).then(output => {
-        if (output ) {
+      run(`ping -n -c 1 -W 1 ${realHost}`).then((output) => {
+        if (output) {
           const m = output.match(/^round-trip \S+ = ([^/]+)/m);
           if (m) {
-            pingTimes[host].set(`${m[1]}ms`)
+            pingTimes[host].set(`${m[1]}ms`);
             pingTimeouts[host].current = 0;
-          } else if (output.includes("0 packets received")) {
+          } else if (output.includes('0 packets received')) {
             if (pingTimeouts[host].current > 5) {
               // If there have been many timeouts, e.g. you have a default route
               // that doesn't respond to pings, don't keep on printing TIMEOUT
               // in red. Make it a smaller timeout instead.
-              pingTimes[host].set("timeout");
+              pingTimes[host].set('timeout');
             } else {
               pingTimeouts[host].current++;
-              pingTimes[host].set("TIMEOUT")
+              pingTimes[host].set('TIMEOUT');
             }
           } else {
             // We didn't error out (e.g. due to a timeout), but couldn't match
             // the expected output of ping. Just print UNKNOWN for now.
-            pingTimes[host].set("UNKNOWN")
+            pingTimes[host].set('UNKNOWN');
           }
         }
       }).catch((err) => {
         // Some other error happened, print it out
-        pingTimes[host].set("ERROR")
-      })
+        pingTimes[host].set('ERROR');
+      });
     });
-  })
+  });
 
   let ping_hosts = pingConfig.hosts;
   if (defaultRoute.current == pingConfig.home_router) {
-    ping_hosts = ping_hosts.concat(pingConfig.additional_home_hosts)
+    ping_hosts = ping_hosts.concat(pingConfig.additional_home_hosts);
   }
   const pingItems = ping_hosts.map((host) => {
-    const realHost = host == "default_route" ? defaultRoute.current : host;
-    let className = "";
+    const realHost = host == 'default_route' ? defaultRoute.current : host;
+    let className = '';
     if (pingTimes[host].value == 'TIMEOUT') {
       className = ErrorStyle;
     }
-    return(
+    return (
       <>
         <dt key={realHost}>{realHost}</dt>
         <dd className={className}>{pingTimes[host].value}</dd>
@@ -675,14 +729,14 @@ const Ping = () => {
     );
   });
 
-  return(
+  return (
     <Module title="Ping" icon="industry">
       <KVList wide>
         {pingItems}
       </KVList>
     </Module>
   );
-}
+};
 
 const RunningVMs = () => {
   const [runningVMs, setRunningVMs] = useState();
@@ -690,7 +744,7 @@ const RunningVMs = () => {
   useTimedCommand(10000, '/usr/local/bin/VBoxManage list runningvms',
     (output) => {
       const currentRunningVMs = [];
-      for (const line of output.split("\n")) {
+      for (const line of output.split('\n')) {
         const m = line.match(/"([^"]+)"/);
         if (m) {
           let vmname = m[1];
@@ -703,30 +757,30 @@ const RunningVMs = () => {
         }
       }
       setRunningVMs(currentRunningVMs);
-    }
-  );
+    });
 
-  return(
+  return (
     <Module title="Running VMs" icon="server">
       <GenericList items={runningVMs} />
     </Module>
   );
-}
+};
 
 const DebugInfo = () => {
   const [timerCount, setTimerCount] = useState();
 
   useRecurringTimer(1000, () => {
     setTimerCount(TimerCount);
-  })
-  return(
+  });
+  return (
     <Module title="Debug" icon="bug">
       <KVList>
-        <dt>Timers:</dt><dd>{timerCount}</dd>
+        <dt>Timers:</dt>
+        <dd>{timerCount}</dd>
       </KVList>
     </Module>
   );
-}
+};
 
 // Main render function - add modules here
 export const render = (state) => (
