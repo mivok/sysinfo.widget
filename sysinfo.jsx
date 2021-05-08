@@ -253,7 +253,7 @@ const ErrorStyle = css({
 
 // This loads the fontawesome CSS needed for icons
 const FontAwesome = () => (
-  <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.15.3/css/all.css">
+  <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.15.3/css/all.css" />
 );
 
 const Icon = ({name}) => <i className={`fa fa-${name}`}></i>;
@@ -523,6 +523,7 @@ const Wifi = () => {
     wifiItems = {"Wifi": "Off"}
   } else {
     wifiItems = {
+      SSID: wifiInfo['SSID'],
       BSSID: wifiInfo['BSSID'],
       Speed: `${wifiInfo['lastTxRate']}Mbps /
         ${wifiInfo['maxRate']}Mbps`,
