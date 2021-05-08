@@ -1,12 +1,10 @@
 import {
   React, run, css, styled,
-} from 'uebersicht';
+} from 'uebersicht'; // eslint-disable-line import/no-unresolved
 
 // React hooks are part of the React object, so we don't import them like we
 // would in normal react, but just set variables instead
-const { useState } = React;
-const { useEffect } = React;
-const { useRef } = React;
+const { useState, useEffect, useRef } = React;
 
 // Configuration
 const moduleConfig = {
