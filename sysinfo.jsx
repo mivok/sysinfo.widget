@@ -470,25 +470,10 @@ const DiskSpace = () => {
       <table className={SimpleTable}>
         <tbody>
           <tr>
-            <td>
-              U
-              {humanize(used * 1024)}
-              B
-            </td>
-            <td>
-              F
-              {humanize(free * 1024)}
-              B
-            </td>
-            <td>
-              T
-              {humanize(total * 1024)}
-              B
-            </td>
-            <td>
-              {parseInt((100 * used) / total, 10)}
-              %
-            </td>
+            <td>{`U ${humanize(used * 1024)}B`}</td>
+            <td>{`F ${humanize(free * 1024)}B`}</td>
+            <td>{`T ${humanize(total * 1024)}B`}</td>
+            <td>{`${parseInt((100 * used) / total, 10)}%`}</td>
           </tr>
         </tbody>
       </table>
