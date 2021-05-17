@@ -2,6 +2,9 @@ import {
   React, run, css, styled,
 } from 'uebersicht'; // eslint-disable-line import/no-unresolved
 
+// We don't use the built in ubersicht timers
+export const refreshFrequency = false;
+
 // React hooks are part of the React object, so we don't import them like we
 // would in normal react, but just set variables instead
 const { useState, useEffect, useRef } = React;
@@ -277,10 +280,10 @@ const KVList = ({ wide, items, children }) => {
   // provided items)
   const renderedItems = Object.keys(items || {}).map(
     (k) => (
-      <>
-        <dt key={k}>{k}</dt>
+      <React.Fragment key={k}>
+        <dt>{k}</dt>
         <dd>{items[k]}</dd>
-      </>
+      </React.Fragment>
     ),
   );
   return (
@@ -520,10 +523,10 @@ const Network = () => {
   });
 
   const ifInfo = Object.keys(interfaces).map((ifName) => (
-    <>
-      <dt key={ifName}>{ifName}</dt>
+    <React.Fragment key={ifName}>
+      <dt>{ifName}</dt>
       <dd>{interfaces[ifName].join(', ')}</dd>
-    </>
+    </React.Fragment>
   ));
 
   return (
@@ -703,10 +706,10 @@ const Ping = () => {
       pingClassName = ErrorStyle;
     }
     return (
-      <>
-        <dt key={realHost}>{realHost}</dt>
+      <React.Fragment key={realHost}>
+        <dt>{realHost}</dt>
         <dd className={pingClassName}>{pingTimes[host].value}</dd>
-      </>
+      </React.Fragment>
     );
   });
 
