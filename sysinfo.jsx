@@ -722,6 +722,34 @@ const Ping = () => {
   );
 };
 
+const AudioDevices = () => {
+  const [input, setInput] = useState();
+  const [output, setOutput] = useState();
+  const [system, setSystem] = useState();
+
+  useTimedCommand(10000, '/usr/local/bin/SwitchAudioSource -c -t input',
+    (result) => { setInput(result.trim()); });
+
+  useTimedCommand(10000, '/usr/local/bin/SwitchAudioSource -c -t output',
+    (result) => { setOutput(result.trim()); });
+
+  useTimedCommand(10000, '/usr/local/bin/SwitchAudioSource -c -t system',
+    (result) => { setSystem(result.trim()); });
+
+  return (
+    <Module title="Audio Devices" icon="volume-up">
+      <KVList>
+        <dt key="input">Input</dt>
+        <dd>{input}</dd>
+        <dt key="output">Output</dt>
+        <dd>{output}</dd>
+        <dt key="system">System</dt>
+        <dd>{system}</dd>
+      </KVList>
+    </Module>
+  );
+};
+
 const RunningVMs = () => {
   const [runningVMs, setRunningVMs] = useState();
 
@@ -781,6 +809,7 @@ export const render = () => (
       <Wifi />
       <Bandwidth />
       <Ping />
+      <AudioDevices />
       <RunningVMs />
     </div>
   </>
