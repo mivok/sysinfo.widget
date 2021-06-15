@@ -37,16 +37,17 @@ let TimerCount = 0;
 // a recurring timer inside a functional react component)
 const useRecurringTimer = (interval, callback) => {
   useEffect(() => {
-    const timer = setInterval(callback, interval);
-    TimerCount += 1;
+    const setTimer = () => {
+      setTimeout(() => {
+        TimerCount -= 1;
+        callback();
+        setTimer();
+      }, interval);
+      TimerCount += 1;
+    };
+    setTimer();
     // Run the first iteration immediately
     callback();
-
-    // Cancel the recurring timer when cleaning up
-    return () => {
-      clearInterval(timer);
-      TimerCount -= 1;
-    };
   }, []);
 };
 
